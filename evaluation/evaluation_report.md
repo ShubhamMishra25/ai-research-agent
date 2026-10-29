@@ -10,6 +10,13 @@ The evaluation suite exercises five boundary conditions:
 
 ## 2. Test Execution Matrix
 
+The matrix below is a planned/example result summary, not execution evidence.
+Run `python evaluation/run_evaluation.py` to execute the live evaluation. That
+command writes the timestamped, machine-readable results to
+[`evaluation_results.json`](./evaluation_results.json). The evaluation uses
+external Gemini and Tavily services, so results are not fully offline or
+deterministic.
+
 | Test ID | Category | Expected Behavior | Actual Behavior | Status |
 |---|---|---|---|---|
 | **TC-01** | Comparative Research | Identification of 3 DBs with pros/cons and citations | Returned Qdrant, Milvus, and Chroma with citations `[S1]`, `[S2]` | **PASSED** |

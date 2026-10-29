@@ -1,6 +1,6 @@
 """Production web search tool with error handling, normalization, and deduplication."""
 import time
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 from app.config import get_settings
 from app.schemas import SearchResultItem, ToolCallRecord
 from app.utils.logging_config import setup_logger
@@ -9,8 +9,8 @@ logger = setup_logger("tools.web_search")
 
 
 class WebSearchTool:
-    def __init__(self, api_key: str = ""):
-        self.api_key = api_key or get_settings().tavily_api_key
+    def __init__(self, api_key: Optional[str] = None):
+        self.api_key = get_settings().tavily_api_key if api_key is None else api_key
 
     def search(self, query: str, max_results: int = 4) -> Tuple[List[SearchResultItem], ToolCallRecord]:
         start = time.perf_counter()

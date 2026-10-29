@@ -2,7 +2,7 @@
 import ipaddress
 import socket
 import time
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 import httpx
 from bs4 import BeautifulSoup
 
@@ -61,11 +61,32 @@ class PageFetchTool:
 
             with httpx.Client(
                 timeout=self.settings.request_timeout_seconds,
-                follow_redirects=True,
+                follow_redirects=False,
                 headers=headers,
-                max_redirects=3
+                max_redirects=0,
+                trust_env=False
             ) as client:
-                response = client.get(url)
+                current_url = url
+                response = None
+                for _ in range(4):
+                    # Validate each hop immediately before connecting. This
+                    # prevents redirects from bypassing the initial check.
+                    self._validate_ssrf_safety(current_url)
+                    response = client.get(current_url)
+                    if response.status_code not in (301, 302, 303, 307, 308):
+                        break
+                    location = response.headers.get("location")
+                    if not location:
+                        break
+                    current_url = urljoin(current_url, location)
+                else:
+                    raise httpx.TooManyRedirects(
+                        "Exceeded maximum redirect count",
+                        request=client.build_request("GET", current_url)
+                    )
+
+                if response is None:
+                    raise httpx.RequestError("No response received")
 
                 if len(response.content) > self.settings.max_page_content_bytes:
                     content_bytes = response.content[:self.settings.max_page_content_bytes]

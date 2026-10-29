@@ -2,7 +2,16 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from app.graph import create_research_graph
-from app.schemas import ResearchPlan, SearchResultItem, FetchedPage, ResearchResponse, ConfidenceAssessment, ConfidenceLevel, KeyFinding, SourceReference
+from app.schemas import (
+    ResearchPlan,
+    SearchResultItem,
+    FetchedPage,
+    ResearchResponse,
+    ConfidenceAssessment,
+    ConfidenceLevel,
+    KeyFinding,
+    SourceReference,
+)
 
 
 def test_graph_happy_path_mocked():
@@ -28,12 +37,19 @@ def test_graph_happy_path_mocked():
         suggested_next_steps=[]
     )
 
-    with patch("app.nodes.planner.ChatGoogleGenerativeAI.with_structured_output") as mock_planner_llm, \
-         patch("app.tools.web_search.WebSearchTool.search") as mock_search, \
-         patch("app.tools.fetch_page.PageFetchTool.fetch") as mock_fetch, \
-         patch("app.nodes.synthesizer.ChatGoogleGenerativeAI.with_structured_output") as mock_synth_llm:
+    # Use side_effect to route structured outputs based on the schema requested
+    def structured_output_side_effect(schema):
+        mock_runnable = MagicMock()
+        if schema == ResearchPlan:
+            mock_runnable.invoke.return_value = mock_plan
+        else:
+            mock_runnable.invoke.return_value = mock_response
+        return mock_runnable
 
-        mock_planner_llm.return_value.invoke.return_value = mock_plan
+    with patch("langchain_google_genai.ChatGoogleGenerativeAI.with_structured_output", side_effect=structured_output_side_effect), \
+         patch("app.tools.web_search.WebSearchTool.search") as mock_search, \
+         patch("app.tools.fetch_page.PageFetchTool.fetch") as mock_fetch:
+
         mock_search.return_value = (
             [SearchResultItem(title="Vector DB", url="https://example.com/vdb", snippet="Comparison of Milvus and Qdrant")],
             MagicMock(status="SUCCESS", latency_ms=10.0, error_message=None)
@@ -42,7 +58,6 @@ def test_graph_happy_path_mocked():
             FetchedPage(url="https://example.com/vdb", title="Vector DB", extracted_text="Comprehensive benchmark text", http_status=200, char_count=500),
             MagicMock(status="SUCCESS", latency_ms=25.0, error_message=None)
         )
-        mock_synth_llm.return_value.invoke.return_value = mock_response
 
         state_input = {
             "execution_id": "test-run-1",
@@ -63,6 +78,7 @@ def test_graph_happy_path_mocked():
         }
 
         output = graph.invoke(state_input)
+
         assert output["final_response"] is not None
         assert output["final_response"].short_answer.startswith("Qdrant, Chroma")
         assert len(output["evidence"]) >= 1

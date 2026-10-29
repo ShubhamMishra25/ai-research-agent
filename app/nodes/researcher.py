@@ -47,6 +47,7 @@ def execute_research_node(state: ResearchState) -> dict:
             errors.append(f"Fetch failed for '{url}': {record.error_message}")
 
     return {
+        "iteration": state.get("iteration", 0) + 1,
         "raw_search_results": all_raw_results,
         "fetched_pages": all_fetched_pages,
         "tool_records": all_tool_records,

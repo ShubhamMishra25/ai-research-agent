@@ -69,8 +69,28 @@ Synthesize a comprehensive, factual, structured ResearchResponse adhering strict
 
         response: ResearchResponse = structured_llm.invoke(messages)
 
-        valid_source_ids = {e.source_id for e in evidence}
-        cleaned_sources = [s for s in response.sources if s.source_id in valid_source_ids]
+        evidence_by_id = {e.source_id: e for e in evidence}
+        invalid_citations = set()
+        cleaned_findings = []
+        for finding in response.key_findings:
+            valid_ids = []
+            for source_id in finding.source_ids:
+                evidence_item = evidence_by_id.get(source_id)
+                if evidence_item is None:
+                    invalid_citations.add(source_id)
+                else:
+                    valid_ids.append(source_id)
+            finding.source_ids = valid_ids
+            cleaned_findings.append(finding)
+        response.key_findings = cleaned_findings
+
+        cleaned_sources = []
+        for source in response.sources:
+            evidence_item = evidence_by_id.get(source.source_id)
+            if evidence_item is None or evidence_item.url != source.url:
+                invalid_citations.add(source.source_id)
+                continue
+            cleaned_sources.append(source)
 
         if not cleaned_sources:
             cleaned_sources = [
@@ -83,6 +103,11 @@ Synthesize a comprehensive, factual, structured ResearchResponse adhering strict
                 for e in evidence[:4]
             ]
         response.sources = cleaned_sources
+        if invalid_citations:
+            response.limitations.append(
+                "Some model-generated citations were removed because their source ID or URL "
+                "did not match retrieved evidence."
+            )
 
         return {"final_response": response}
 

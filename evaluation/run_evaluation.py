@@ -1,10 +1,12 @@
 """Evaluation runner executing test cases and grading schema, grounding, and confidence."""
 import json
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 
+from app.config import get_settings
 from app.graph import run_research_agent
 
 console = Console()
@@ -35,8 +37,15 @@ def evaluate_response(tc: dict, state: dict) -> dict:
     for kf in resp.key_findings:
         cited_ids.update(kf.source_ids)
 
-    declared_ids = {s.source_id for s in resp.sources}
-    results["grounding_intact"] = cited_ids.issubset(declared_ids)
+    evidence_by_id = {item.source_id: item for item in state.get("evidence", [])}
+    declared_sources = {source.source_id: source for source in resp.sources}
+    ids_match_evidence = cited_ids.issubset(evidence_by_id)
+    urls_match_evidence = all(
+        source_id in evidence_by_id
+        and declared_sources[source_id].url == evidence_by_id[source_id].url
+        for source_id in declared_sources
+    )
+    results["grounding_intact"] = ids_match_evidence and urls_match_evidence
     return results
 
 
@@ -87,7 +96,18 @@ def main():
             str(item.get("duration_sec", 0.0))
         )
 
-    console.print("\n")
+    results_path = Path(__file__).parent / "evaluation_results.json"
+    payload = {
+        "executed_at": datetime.now(timezone.utc).isoformat(),
+        "configuration": {
+            "case_count": len(cases),
+            "max_research_iterations": get_settings().max_research_iterations,
+            "live_external_services": True,
+        },
+        "results": eval_summary,
+    }
+    results_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    console.print(f"\nMachine-readable results written to {results_path}")
     console.print(table)
 
 
