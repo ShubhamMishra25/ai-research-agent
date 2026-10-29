@@ -38,7 +38,6 @@ def plan_research_node(state: ResearchState) -> dict:
 
         return {
             "plan": plan,
-            "iteration": state.get("iteration", 0) + 1,
             "warnings": []
         }
     except Exception as exc:
@@ -53,6 +52,5 @@ def plan_research_node(state: ResearchState) -> dict:
         )
         return {
             "plan": fallback_plan,
-            "iteration": state.get("iteration", 0) + 1,
             "warnings": [f"Planner fallback triggered: {str(exc)}"]
         }

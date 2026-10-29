@@ -8,9 +8,17 @@ from app.utils.logging_config import setup_logger
 
 logger = setup_logger("node.evidence")
 
+STOPWORDS = {
+    "about", "after", "also", "and", "are", "for", "from", "how", "into",
+    "that", "the", "their", "these", "this", "what", "which", "with",
+}
+
 
 def _terms(text: str) -> set[str]:
-    return {term for term in re.findall(r"[a-z0-9]{3,}", text.lower())}
+    return {
+        term for term in re.findall(r"[a-z0-9]{3,}", text.lower())
+        if term not in STOPWORDS
+    }
 
 
 def process_evidence_node(state: ResearchState) -> dict:
@@ -38,7 +46,7 @@ def process_evidence_node(state: ResearchState) -> dict:
 
         evidence_terms = _terms(f"{res.title} {res.snippet} {text_snippet}")
         overlap = len(target_terms & evidence_terms) / max(len(target_terms), 1)
-        relevance = min(1.0, 0.4 + overlap)
+        relevance = min(1.0, overlap)
         if is_full:
             relevance = min(1.0, relevance + 0.15)
         evidence_item = FilteredEvidence(
@@ -59,7 +67,11 @@ def process_evidence_node(state: ResearchState) -> dict:
     quality_sources = [e for e in filtered if e.relevance_score >= 0.5]
     covered_subquestions = sum(
         1 for subquestion in (plan.subquestions if plan else [])
-        if _terms(subquestion) & _terms(" ".join(e.summary_or_excerpt for e in filtered))
+        if any(
+            len(_terms(subquestion) & _terms(e.summary_or_excerpt))
+            >= max(2, len(_terms(subquestion)) // 3)
+            for e in filtered
+        )
     )
     planned_count = len(plan.subquestions) if plan else 0
     coverage_ok = planned_count == 0 or covered_subquestions >= max(1, (planned_count + 1) // 2)

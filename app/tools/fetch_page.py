@@ -14,6 +14,50 @@ from app.utils.logging_config import setup_logger
 logger = setup_logger("tools.fetch_page")
 
 
+def _is_disallowed_ip(ip_str: str) -> bool:
+    ip_obj = ipaddress.ip_address(ip_str)
+    return (
+        ip_obj.is_private
+        or ip_obj.is_loopback
+        or ip_obj.is_link_local
+        or ip_obj.is_multicast
+        or ip_obj.is_reserved
+        or ip_str in ("169.254.169.254", "0.0.0.0")
+    )
+
+
+def _allowed_addresses(hostname: str, port: int) -> list[tuple]:
+    try:
+        addresses = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+    except socket.gaierror as exc:
+        raise SSRFViolationError(f"DNS resolution failure for host '{hostname}': {exc}") from exc
+    allowed = [item for item in addresses if not _is_disallowed_ip(item[4][0])]
+    if not allowed:
+        raise SSRFViolationError(f"Disallowed destination for host: {hostname}")
+    return allowed
+
+
+class _PinnedHTTPTransport(httpx.HTTPTransport):
+    """Pin each request's hostname to the addresses validated for that request."""
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        hostname = request.url.host
+        port = request.url.port or (443 if request.url.scheme == "https" else 80)
+        allowed = _allowed_addresses(hostname, port)
+        original_getaddrinfo = socket.getaddrinfo
+
+        def pinned_getaddrinfo(host: str, requested_port: int, *args, **kwargs):
+            if host == hostname and requested_port == port:
+                return allowed
+            return original_getaddrinfo(host, requested_port, *args, **kwargs)
+
+        socket.getaddrinfo = pinned_getaddrinfo
+        try:
+            return super().handle_request(request)
+        finally:
+            socket.getaddrinfo = original_getaddrinfo
+
+
 class PageFetchTool:
     def __init__(self):
         self.settings = get_settings()
@@ -34,16 +78,7 @@ class PageFetchTool:
             addr_info = socket.getaddrinfo(hostname, None)
             for item in addr_info:
                 ip_str = item[4][0]
-                ip_obj = ipaddress.ip_address(ip_str)
-
-                if (
-                    ip_obj.is_private
-                    or ip_obj.is_loopback
-                    or ip_obj.is_link_local
-                    or ip_obj.is_multicast
-                    or ip_obj.is_reserved
-                    or ip_str in ("169.254.169.254", "0.0.0.0")
-                ):
+                if _is_disallowed_ip(ip_str):
                     raise SSRFViolationError(f"Disallowed destination IP: {ip_str} for host: {hostname}")
         except socket.gaierror as e:
             raise SSRFViolationError(f"DNS resolution failure for host '{hostname}': {str(e)}")
@@ -64,7 +99,11 @@ class PageFetchTool:
                 follow_redirects=False,
                 headers=headers,
                 max_redirects=0,
-                trust_env=False
+                trust_env=False,
+                transport=_PinnedHTTPTransport(
+                    verify=True,
+                    trust_env=False
+                )
             ) as client:
                 current_url = url
                 response = None
@@ -72,7 +111,17 @@ class PageFetchTool:
                     # Validate each hop immediately before connecting. This
                     # prevents redirects from bypassing the initial check.
                     self._validate_ssrf_safety(current_url)
-                    response = client.get(current_url)
+                    with client.stream("GET", current_url) as streamed_response:
+                        response = streamed_response
+                        if response.status_code not in (301, 302, 303, 307, 308):
+                            body = bytearray()
+                            async_limit = self.settings.max_page_content_bytes
+                            for chunk in streamed_response.iter_bytes():
+                                remaining = async_limit - len(body)
+                                if remaining <= 0:
+                                    break
+                                body.extend(chunk[:remaining])
+                            content_bytes = bytes(body)
                     if response.status_code not in (301, 302, 303, 307, 308):
                         break
                     location = response.headers.get("location")
@@ -87,11 +136,6 @@ class PageFetchTool:
 
                 if response is None:
                     raise httpx.RequestError("No response received")
-
-                if len(response.content) > self.settings.max_page_content_bytes:
-                    content_bytes = response.content[:self.settings.max_page_content_bytes]
-                else:
-                    content_bytes = response.content
 
                 soup = BeautifulSoup(content_bytes, "html.parser")
 

@@ -82,3 +82,43 @@ def test_graph_happy_path_mocked():
         assert output["final_response"] is not None
         assert output["final_response"].short_answer.startswith("Qdrant, Chroma")
         assert len(output["evidence"]) >= 1
+
+
+def test_insufficient_evidence_runs_second_research_cycle():
+    graph = create_research_graph()
+    mock_plan = ResearchPlan(
+        objective="Find evidence",
+        subquestions=["Specific evidence"],
+        proposed_searches=["specific evidence"],
+        evidence_needed="Direct source",
+        completion_criteria="One verified source",
+    )
+    with patch("langchain_google_genai.ChatGoogleGenerativeAI.with_structured_output") as structured, \
+         patch("app.tools.web_search.WebSearchTool.search") as search, \
+         patch("app.tools.fetch_page.PageFetchTool.fetch") as fetch:
+        planner_output = MagicMock()
+        planner_output.invoke.return_value = mock_plan
+        structured.return_value = planner_output
+        search.return_value = ([], MagicMock(status="FAILURE", error_message="offline"))
+        fetch.return_value = (None, MagicMock(status="FAILURE", error_message="offline"))
+        state = {
+            "execution_id": "iteration-test",
+            "question": "Find evidence",
+            "iteration": 0,
+            "max_iterations": 2,
+            "plan": None,
+            "tool_records": [],
+            "raw_search_results": [],
+            "fetched_pages": [],
+            "evidence": [],
+            "is_sufficient": False,
+            "sufficiency_reason": "Init",
+            "final_response": None,
+            "errors": [],
+            "warnings": [],
+            "metadata": {},
+        }
+        output = graph.invoke(state)
+
+    assert search.call_count == 2
+    assert output["iteration"] == 2

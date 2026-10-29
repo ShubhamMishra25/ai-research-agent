@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from rich.console import Console
 from rich.table import Table
+from app.schemas import ResearchResponse
 
 from app.config import get_settings
 from app.graph import run_research_agent
@@ -18,7 +19,7 @@ def evaluate_response(tc: dict, state: dict) -> dict:
     results = {
         "id": tc["id"],
         "category": tc["category"],
-        "schema_valid": resp is not None,
+        "schema_valid": False,
         "has_sources": len(resp.sources) > 0 if resp else False,
         "confidence_matched": False,
         "notes": ""
@@ -26,6 +27,12 @@ def evaluate_response(tc: dict, state: dict) -> dict:
 
     if not resp:
         results["notes"] = "Failed to produce final response schema"
+        return results
+    try:
+        ResearchResponse.model_validate(resp)
+        results["schema_valid"] = True
+    except Exception as exc:
+        results["notes"] = f"Invalid response schema: {exc}"
         return results
 
     actual_conf = resp.confidence.level.value
@@ -46,6 +53,15 @@ def evaluate_response(tc: dict, state: dict) -> dict:
         for source_id in declared_sources
     )
     results["grounding_intact"] = ids_match_evidence and urls_match_evidence
+    results["finding_citations_declared"] = cited_ids.issubset(set(declared_sources))
+    if tc["expected_confidence"].lower() == "low":
+        results["fallback_behavior_matched"] = (
+            actual_conf.lower() == "low"
+            and bool(resp.limitations)
+            and "Unable to complete research" in resp.short_answer
+        )
+    else:
+        results["fallback_behavior_matched"] = True
     return results
 
 

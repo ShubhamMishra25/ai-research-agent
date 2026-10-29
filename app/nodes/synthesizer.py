@@ -103,10 +103,22 @@ Synthesize a comprehensive, factual, structured ResearchResponse adhering strict
                 for e in evidence[:4]
             ]
         response.sources = cleaned_sources
+        declared_source_ids = {source.source_id for source in response.sources}
+        supported_findings = []
+        for finding in response.key_findings:
+            finding.source_ids = [
+                source_id for source_id in finding.source_ids
+                if source_id in declared_source_ids
+            ]
+            if finding.source_ids:
+                supported_findings.append(finding)
+            else:
+                invalid_citations.add("unsupported finding")
+        response.key_findings = supported_findings
         if invalid_citations:
             response.limitations.append(
                 "Some model-generated citations were removed because their source ID or URL "
-                "did not match retrieved evidence."
+                "did not match retrieved evidence or declared sources."
             )
 
         return {"final_response": response}

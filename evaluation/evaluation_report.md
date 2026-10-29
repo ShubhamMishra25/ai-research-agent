@@ -19,8 +19,8 @@ deterministic.
 
 | Test ID | Category | Expected Behavior | Actual Behavior | Status |
 |---|---|---|---|---|
-| **TC-01** | Comparative Research | Identification of 3 DBs with pros/cons and citations | Returned Qdrant, Milvus, and Chroma with citations `[S1]`, `[S2]` | **PASSED** |
-| **TC-02** | Entity Discovery | 5 Indian HR Tech startups with positioning | Discovered Darwinbox, Keka, greytHR, Zimyo, Leena AI | **PASSED** |
-| **TC-03** | Ambiguous Query | Explicit assumptions, Medium confidence | Declared developer stack assumptions; compared LangGraph, AutoGen, CrewAI | **PASSED** |
-| **TC-04** | Tool Outage | Deterministic fallback, Low confidence, no crash | Search failed gracefully; returned structured fallback with next steps | **PASSED** |
-| **TC-05** | Obscure Entity | Refusal to fabricate facts, Low confidence | Emitted Low confidence; stated zero verifiable records discovered | **PASSED** |
+| **TC-01** | Comparative Research | Identification of 3 DBs with pros/cons and citations | Not executed | **Illustrative — not executed** |
+| **TC-02** | Entity Discovery | 5 Indian HR Tech startups with positioning | Not executed | **Illustrative — not executed** |
+| **TC-03** | Ambiguous Query | Explicit assumptions, Medium confidence | Not executed | **Illustrative — not executed** |
+| **TC-04** | Tool Outage | Deterministic fallback, Low confidence, no crash | Not executed | **Illustrative — not executed** |
+| **TC-05** | Obscure Entity | Refusal to fabricate facts, Low confidence | Not executed | **Illustrative — not executed** |
