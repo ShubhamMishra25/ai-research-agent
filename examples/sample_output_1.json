@@ -1,0 +1,52 @@
+{
+  "question": "Compare the top 3 open-source vector databases for a startup building RAG products.",
+  "short_answer": "For early-to-mid stage startups building RAG applications, Qdrant offers the best balance of performance and developer experience; Chroma provides the simplest local prototyping setup; and Milvus excels at massive-scale distributed workloads.",
+  "key_findings": [
+    {
+      "finding": "Qdrant is implemented in Rust, provides fast vector indexing (HNSW), built-in payload filtering, and native support for hybrid search.",
+      "source_ids": ["S1", "S2"]
+    },
+    {
+      "finding": "Chroma is lightweight, Python-native, and ideal for quick local experimentation, though historically less suited for multi-node production clusters.",
+      "source_ids": ["S2"]
+    },
+    {
+      "finding": "Milvus is a cloud-native, distributed vector database built for billions of vectors, but introduces higher operational infrastructure complexity for early-stage teams.",
+      "source_ids": ["S1", "S3"]
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "S1",
+      "title": "Comprehensive Vector Database Benchmark",
+      "url": "https://qdrant.tech/benchmarks",
+      "relevance_description": "Comparative latency and throughput data across vector databases."
+    },
+    {
+      "source_id": "S2",
+      "title": "Open Source Vector Database Comparison Guide",
+      "url": "https://thedataquarry.com/posts/vector-db-comparison",
+      "relevance_description": "Tradeoff analysis between Chroma, Qdrant, and Milvus architecture."
+    },
+    {
+      "source_id": "S3",
+      "title": "Milvus Architecture Documentation",
+      "url": "https://milvus.io/docs/overview.md",
+      "relevance_description": "Scalability and deployment topology details."
+    }
+  ],
+  "confidence": {
+    "level": "High",
+    "justification": "Primary documentation and independent benchmarks corroborated architectural tradeoffs."
+  },
+  "assumptions": [
+    "Startup prefers open-source licensing to retain deployment control.",
+    "Target workload combines dense semantic retrieval with metadata filtering."
+  ],
+  "limitations": [
+    "Performance numbers vary based on index parameters and embedding dimensionality."
+  ],
+  "suggested_next_steps": [
+    "Benchmark Qdrant and Chroma against your team's specific chunk size and query distribution."
+  ]
+}

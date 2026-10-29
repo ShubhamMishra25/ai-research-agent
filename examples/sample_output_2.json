@@ -1,0 +1,71 @@
+{
+  "question": "Find 5 Indian B2B SaaS startups in HR tech and summarize their positioning.",
+  "short_answer": "Five prominent Indian HR tech SaaS companies are Darwinbox, Keka, greytHR, Zimyo, and Leena AI, addressing needs ranging from enterprise HCM to mid-market payroll and AI employee experience.",
+  "key_findings": [
+    {
+      "finding": "Darwinbox positions itself as an enterprise-grade Human Capital Management (HCM) suite, competing directly with Workday and SAP SuccessFactors in Asian markets.",
+      "source_ids": ["S1"]
+    },
+    {
+      "finding": "Keka focuses on SME and mid-market organizations, emphasizing intuitive payroll, employee engagement, and modern UX.",
+      "source_ids": ["S2"]
+    },
+    {
+      "finding": "greytHR is an established player specializing in statutory compliance, payroll automation, and core HR for Indian SMEs.",
+      "source_ids": ["S3"]
+    },
+    {
+      "finding": "Zimyo provides an integrated HRMS, payroll, and employee financial wellness platform tailored for emerging businesses.",
+      "source_ids": ["S4"]
+    },
+    {
+      "finding": "Leena AI positions as an autonomous agent and conversational AI platform for employee service delivery and HR helpdesk automation.",
+      "source_ids": ["S5"]
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "S1",
+      "title": "Darwinbox Corporate Overview",
+      "url": "https://darwinbox.com",
+      "relevance_description": "Enterprise positioning and HCM module coverage."
+    },
+    {
+      "source_id": "S2",
+      "title": "Keka HR Software Positioning",
+      "url": "https://keka.com",
+      "relevance_description": "Mid-market payroll and HR features."
+    },
+    {
+      "source_id": "S3",
+      "title": "greytHR Cloud Payroll & Compliance",
+      "url": "https://greythr.com",
+      "relevance_description": "Statutory compliance and SME focus."
+    },
+    {
+      "source_id": "S4",
+      "title": "Zimyo HRMS Platform",
+      "url": "https://zimyo.com",
+      "relevance_description": "Integrated HR and financial wellness offerings."
+    },
+    {
+      "source_id": "S5",
+      "title": "Leena AI Workday Integration and Conversational AI",
+      "url": "https://leena.ai",
+      "relevance_description": "AI agent employee experience positioning."
+    }
+  ],
+  "confidence": {
+    "level": "High",
+    "justification": "All 5 entities were verified through direct company positioning materials and SaaS directories."
+  },
+  "assumptions": [
+    "User seeks active Indian-headquartered or India-centric B2B SaaS companies."
+  ],
+  "limitations": [
+    "Pricing models and private revenue metrics are omitted."
+  ],
+  "suggested_next_steps": [
+    "Determine whether your organization prioritizes core statutory payroll or AI helpdesk automation."
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "question": "What is the market capitalization of Zyxvubq Technologies in 2024?",
+  "short_answer": "Unable to complete research with high confidence. Reason: No verified external evidence could be retrieved.",
+  "key_findings": [
+    {
+      "finding": "Execution encountered a bounded limit or failure mode preventing exhaustive analysis.",
+      "source_ids": []
+    }
+  ],
+  "sources": [],
+  "confidence": {
+    "level": "Low",
+    "justification": "Deterministic fallback triggered due to errors or empty evidence: No verified external records found."
+  },
+  "assumptions": [
+    "Fallback response triggered without verified external facts."
+  ],
+  "limitations": [
+    "Tool outputs were either missing, malformed, or unrecoverable.",
+    "Entity 'Zyxvubq Technologies' does not match any recognized public company or directory index."
+  ],
+  "suggested_next_steps": [
+    "Verify spelling or check alternative company identifiers (e.g., ticker symbol, stock exchange)."
+  ]
+}
