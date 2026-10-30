@@ -3,7 +3,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from app.config import get_settings
-from app.schemas import ResearchPlan
+from app.schemas import FollowUpSearchPlan, ResearchPlan
 from app.state import ResearchState
 from app.utils.logging_config import setup_logger
 
@@ -14,6 +14,12 @@ Given a user question, generate a concise, highly targeted research plan.
 Decompose the query into 2-3 specific subquestions and generate 2-3 precise web search queries.
 Choose queries that will yield high-authority sources, benchmarks, official documentation, or industry overviews.
 Avoid generic or overly broad search queries.
+"""
+
+FOLLOW_UP_SYSTEM_PROMPT = """You are a research refinement specialist.
+Generate 1-2 precise, non-overlapping web search queries that directly address
+the supplied unanswered subquestions. Prefer authoritative sources and include
+the missing aspect in each query. Do not repeat any query already used.
 """
 
 
@@ -54,3 +60,46 @@ def plan_research_node(state: ResearchState) -> dict:
             "plan": fallback_plan,
             "warnings": [f"Planner fallback triggered: {str(exc)}"]
         }
+
+
+def generate_follow_up_queries(state: ResearchState) -> list[str]:
+    """Generate targeted searches for current evidence gaps.
+
+    A deterministic fallback keeps the research loop useful when the planning
+    model is unavailable.
+    """
+    gaps = [gap.strip() for gap in state.get("evidence_gaps", []) if gap.strip()]
+    used = {query.casefold().strip() for query in state.get("used_queries", [])}
+    if not gaps:
+        return []
+
+    try:
+        settings = get_settings()
+        llm = ChatGoogleGenerativeAI(
+            model=settings.gemini_model,
+            google_api_key=settings.gemini_api_key,
+            temperature=0.1
+        )
+        structured_llm = llm.with_structured_output(FollowUpSearchPlan)
+        prompt = (
+            f"Research question: {state['question']}\n"
+            f"Evidence gaps: {gaps}\n"
+            f"Previously used queries: {list(state.get('used_queries', []))}"
+        )
+        result: FollowUpSearchPlan = structured_llm.invoke([
+            SystemMessage(content=FOLLOW_UP_SYSTEM_PROMPT),
+            HumanMessage(content=prompt),
+        ])
+        candidates = result.queries
+    except Exception as exc:
+        logger.warning("Follow-up query generation failed: %s", exc)
+        candidates = [f"{gap} authoritative evidence" for gap in gaps]
+
+    queries = []
+    for query in candidates:
+        normalized = query.strip()
+        if normalized and normalized.casefold() not in used and normalized.casefold() not in {
+            item.casefold() for item in queries
+        }:
+            queries.append(normalized)
+    return queries[:2]

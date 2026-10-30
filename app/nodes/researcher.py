@@ -4,6 +4,7 @@ from app.schemas import SearchResultItem, FetchedPage, ToolCallRecord
 from app.state import ResearchState
 from app.tools.web_search import WebSearchTool
 from app.tools.fetch_page import PageFetchTool
+from app.nodes.planner import generate_follow_up_queries
 from app.utils.logging_config import setup_logger
 
 logger = setup_logger("node.researcher")
@@ -15,20 +16,30 @@ def execute_research_node(state: ResearchState) -> dict:
     fetch_tool = PageFetchTool()
 
     plan = state.get("plan")
-    queries_to_run = plan.proposed_searches if plan and plan.proposed_searches else [state["question"]]
+    if state.get("iteration", 0) > 0:
+        queries_to_run = generate_follow_up_queries(state)
+    else:
+        queries_to_run = plan.proposed_searches if plan and plan.proposed_searches else [state["question"]]
 
     all_raw_results: list[SearchResultItem] = list(state.get("raw_search_results", []))
     all_tool_records: list[ToolCallRecord] = list(state.get("tool_records", []))
     all_fetched_pages: list[FetchedPage] = list(state.get("fetched_pages", []))
     errors: list[str] = list(state.get("errors", []))
+    used_queries = list(state.get("used_queries", []))
+    used_query_keys = {query.casefold().strip() for query in used_queries}
 
     existing_urls = {res.url for res in all_raw_results}
 
     for q in queries_to_run[:2]:
-        results, record = search_tool.search(q, max_results=settings.max_search_results_per_query)
+        normalized_query = q.strip()
+        if not normalized_query or normalized_query.casefold() in used_query_keys:
+            continue
+        used_query_keys.add(normalized_query.casefold())
+        used_queries.append(normalized_query)
+        results, record = search_tool.search(normalized_query, max_results=settings.max_search_results_per_query)
         all_tool_records.append(record)
         if record.error_message:
-            errors.append(f"Search failed for '{q}': {record.error_message}")
+            errors.append(f"Search failed for '{normalized_query}': {record.error_message}")
 
         for item in results:
             if item.url not in existing_urls:
@@ -48,6 +59,7 @@ def execute_research_node(state: ResearchState) -> dict:
 
     return {
         "iteration": state.get("iteration", 0) + 1,
+        "used_queries": used_queries,
         "raw_search_results": all_raw_results,
         "fetched_pages": all_fetched_pages,
         "tool_records": all_tool_records,

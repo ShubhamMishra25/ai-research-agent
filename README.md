@@ -37,3 +37,18 @@ results with a UTC timestamp to `evaluation/evaluation_results.json`:
 ```bash
 python evaluation/run_evaluation.py
 ```
+
+## Adaptive research loop
+
+The agent performs a bounded, evidence-driven loop:
+
+1. The planner creates the initial subquestions and searches.
+2. The researcher records executed queries and preserves all discovered URLs
+   and fetched pages.
+3. The evidence processor evaluates relevance and subquestion coverage, then
+   records any unanswered subquestions as evidence gaps.
+4. If gaps remain, the next research cycle generates new targeted queries for
+   those gaps and filters out previously used queries.
+5. The graph synthesizes when evidence is sufficient or when
+   `MAX_RESEARCH_ITERATIONS` is reached. Tool failures or follow-up planning
+   failures use deterministic fallbacks and do not discard collected evidence.

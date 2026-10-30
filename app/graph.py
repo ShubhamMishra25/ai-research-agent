@@ -63,6 +63,8 @@ def run_research_agent(question: str, execution_id: str = None) -> ResearchState
         "raw_search_results": [],
         "fetched_pages": [],
         "evidence": [],
+        "evidence_gaps": [],
+        "used_queries": [],
         "is_sufficient": False,
         "sufficiency_reason": "Initialized",
         "final_response": None,

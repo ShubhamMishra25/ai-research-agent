@@ -84,6 +84,17 @@ def process_evidence_node(state: ResearchState) -> dict:
         and any(e.is_full_page and e.relevance_score >= 0.5 for e in filtered)
         and coverage_ok
     )
+    evidence_gaps = []
+    if plan:
+        for subquestion in plan.subquestions:
+            subquestion_terms = _terms(subquestion)
+            covered = any(
+                len(subquestion_terms & _terms(item.summary_or_excerpt))
+                >= max(2, len(subquestion_terms) // 3)
+                for item in filtered
+            )
+            if not covered:
+                evidence_gaps.append(subquestion)
 
     if not is_sufficient:
         if current_iteration < max_iterations:
@@ -97,6 +108,7 @@ def process_evidence_node(state: ResearchState) -> dict:
 
     return {
         "evidence": filtered,
+        "evidence_gaps": evidence_gaps,
         "is_sufficient": is_sufficient,
         "sufficiency_reason": reason
     }

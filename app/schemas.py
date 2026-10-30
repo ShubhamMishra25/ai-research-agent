@@ -53,6 +53,12 @@ class ResearchPlan(BaseModel):
     completion_criteria: str = Field(description="Condition indicating research is complete")
 
 
+class FollowUpSearchPlan(BaseModel):
+    queries: List[str] = Field(
+        description="New search queries targeting the supplied evidence gaps"
+    )
+
+
 class KeyFinding(BaseModel):
     finding: str = Field(description="Key factual finding or takeaway")
     source_ids: List[str] = Field(default_factory=list, description="IDs of sources supporting this finding (e.g. S1)")

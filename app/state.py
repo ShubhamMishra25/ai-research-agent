@@ -20,6 +20,8 @@ class ResearchState(TypedDict):
     raw_search_results: List[SearchResultItem]
     fetched_pages: List[FetchedPage]
     evidence: List[FilteredEvidence]
+    evidence_gaps: List[str]
+    used_queries: List[str]
     is_sufficient: bool
     sufficiency_reason: str
     final_response: Optional[ResearchResponse]

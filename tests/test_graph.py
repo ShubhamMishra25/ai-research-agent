@@ -2,6 +2,8 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from app.graph import create_research_graph
+from app.nodes.researcher import execute_research_node
+from app.nodes.evidence import process_evidence_node
 from app.schemas import (
     ResearchPlan,
     SearchResultItem,
@@ -122,3 +124,136 @@ def test_insufficient_evidence_runs_second_research_cycle():
 
     assert search.call_count == 2
     assert output["iteration"] == 2
+
+
+def test_follow_up_queries_target_gaps_and_preserve_unique_evidence():
+    state = {
+        "execution_id": "adaptive-test",
+        "question": "Compare vector databases",
+        "iteration": 1,
+        "max_iterations": 3,
+        "plan": ResearchPlan(
+            objective="Compare databases",
+            subquestions=["Benchmark latency", "Compare licensing"],
+            proposed_searches=["vector database overview"],
+            evidence_needed="Benchmarks and licenses",
+            completion_criteria="Both gaps answered",
+        ),
+        "evidence_gaps": ["Compare licensing"],
+        "used_queries": ["vector database overview"],
+        "tool_records": [],
+        "raw_search_results": [
+            SearchResultItem(
+                title="Existing",
+                url="https://example.com/existing",
+                snippet="Existing benchmark evidence",
+            )
+        ],
+        "fetched_pages": [],
+        "evidence": [],
+        "is_sufficient": False,
+        "sufficiency_reason": "Missing licensing",
+        "final_response": None,
+        "errors": [],
+        "warnings": [],
+        "metadata": {},
+    }
+
+    with patch(
+        "app.nodes.researcher.generate_follow_up_queries",
+        return_value=["vector database overview", "vector database licensing comparison"],
+    ), patch("app.tools.web_search.WebSearchTool.search") as search, patch(
+        "app.tools.fetch_page.PageFetchTool.fetch"
+    ) as fetch:
+        search.return_value = (
+            [
+                SearchResultItem(
+                    title="Existing duplicate",
+                    url="https://example.com/existing",
+                    snippet="Duplicate result",
+                ),
+                SearchResultItem(
+                    title="License guide",
+                    url="https://example.com/license",
+                    snippet="Open-source licensing comparison",
+                ),
+            ],
+            MagicMock(status="SUCCESS", latency_ms=1.0, error_message=None),
+        )
+        def fetch_page(url):
+            return (
+                FetchedPage(
+                    url=url,
+                    title="License guide",
+                    extracted_text="Open-source licensing comparison",
+                    http_status=200,
+                    char_count=100,
+                ),
+                MagicMock(status="SUCCESS", latency_ms=1.0, error_message=None),
+            )
+
+        fetch.side_effect = fetch_page
+        result = execute_research_node(state)
+
+    assert search.call_args.args[0] == "vector database licensing comparison"
+    assert result["used_queries"] == [
+        "vector database overview",
+        "vector database licensing comparison",
+    ]
+    assert [item.url for item in result["raw_search_results"]] == [
+        "https://example.com/existing",
+        "https://example.com/license",
+    ]
+    assert [page.url for page in result["fetched_pages"]] == [
+        "https://example.com/existing",
+        "https://example.com/license",
+    ]
+
+
+def test_sufficient_evidence_stops_research():
+    plan = ResearchPlan(
+        objective="Compare databases",
+        subquestions=["Benchmark latency"],
+        proposed_searches=["vector database benchmark"],
+        evidence_needed="Latency benchmarks",
+        completion_criteria="Benchmark covered",
+    )
+    result = process_evidence_node({
+        "question": "Compare vector databases",
+        "plan": plan,
+        "iteration": 1,
+        "max_iterations": 3,
+        "raw_search_results": [
+            SearchResultItem(
+                title="Benchmark A",
+                url="https://a.example/bench",
+                snippet="Vector database benchmark latency results",
+            ),
+            SearchResultItem(
+                title="Benchmark B",
+                url="https://b.example/bench",
+                snippet="Vector database benchmark latency comparison",
+            ),
+        ],
+        "fetched_pages": [],
+    })
+
+    assert result["is_sufficient"] is True
+    assert result["evidence_gaps"] == []
+
+
+def test_follow_up_query_generation_failure_uses_gap_fallback():
+    from app.nodes.planner import generate_follow_up_queries
+
+    state = {
+        "question": "Compare vector databases",
+        "evidence_gaps": ["licensing differences"],
+        "used_queries": ["vector database overview"],
+    }
+    with patch(
+        "app.nodes.planner.ChatGoogleGenerativeAI",
+        side_effect=RuntimeError("planner unavailable"),
+    ):
+        queries = generate_follow_up_queries(state)
+
+    assert queries == ["licensing differences authoritative evidence"]
