@@ -21,8 +21,11 @@ class Settings(BaseSettings):
     max_search_results_per_query: int = Field(default=4, alias="MAX_SEARCH_RESULTS_PER_QUERY")
     max_pages_to_fetch: int = Field(default=3, alias="MAX_PAGES_TO_FETCH")
     request_timeout_seconds: float = Field(default=10.0, alias="REQUEST_TIMEOUT_SECONDS")
+    llm_timeout_seconds: float = Field(default=45.0, alias="LLM_TIMEOUT_SECONDS")
     max_page_content_bytes: int = Field(default=500_000, alias="MAX_PAGE_CONTENT_BYTES")
     max_extracted_text_chars: int = Field(default=12_000, alias="MAX_EXTRACTED_TEXT_CHARS")
+    max_retries: int = Field(default=2, alias="MAX_RETRIES")
+    retry_backoff_seconds: float = Field(default=0.5, alias="RETRY_BACKOFF_SECONDS")
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
 
 

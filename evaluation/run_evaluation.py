@@ -1,14 +1,18 @@
 """Evaluation runner executing test cases and grading schema, grounding, and confidence."""
 import json
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+
 from rich.console import Console
 from rich.table import Table
-from app.schemas import ResearchResponse
 
-from app.config import get_settings
-from app.graph import run_research_agent
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.schemas import ResearchResponse  # noqa: E402
+from app.config import get_settings  # noqa: E402
+from app.graph import run_research_agent  # noqa: E402
 
 console = Console()
 
@@ -61,7 +65,27 @@ def evaluate_response(tc: dict, state: dict) -> dict:
             and "Unable to complete research" in resp.short_answer
         )
     else:
-        results["fallback_behavior_matched"] = True
+        results["fallback_behavior_matched"] = actual_conf.lower() != "low"
+
+    metadata = state.get("metadata") or {}
+    node_metrics = metadata.get("metrics") or []
+    total_input_tokens = sum(
+        (entry.get("usage") or {}).get("input_tokens") or 0 for entry in node_metrics
+    )
+    total_output_tokens = sum(
+        (entry.get("usage") or {}).get("output_tokens") or 0 for entry in node_metrics
+    )
+    results["total_latency_ms"] = metadata.get("total_latency_ms")
+    results["total_input_tokens"] = total_input_tokens
+    results["total_output_tokens"] = total_output_tokens
+    results["node_latencies_ms"] = {
+        entry.get("node", "?"): entry.get("latency_ms") for entry in node_metrics
+    }
+    results["short_answer"] = resp.short_answer
+    results["key_findings_count"] = len(resp.key_findings)
+    results["sources_count"] = len(resp.sources)
+    results["limitations"] = list(resp.limitations)
+    results["assumptions"] = list(resp.assumptions)
     return results
 
 
@@ -106,9 +130,9 @@ def main():
         table.add_row(
             item["id"],
             item["category"],
-            "✓" if item["schema_valid"] else "✗",
-            "✓" if item.get("has_sources") else "✗",
-            "✓" if item.get("grounding_intact") else "✗",
+            "PASS" if item["schema_valid"] else "FAIL",
+            "PASS" if item.get("has_sources") else "FAIL",
+            "PASS" if item.get("grounding_intact") else "FAIL",
             str(item.get("duration_sec", 0.0))
         )
 
@@ -117,7 +141,10 @@ def main():
         "executed_at": datetime.now(timezone.utc).isoformat(),
         "configuration": {
             "case_count": len(cases),
+            "gemini_model": get_settings().gemini_model,
             "max_research_iterations": get_settings().max_research_iterations,
+            "max_retries": get_settings().max_retries,
+            "llm_timeout_seconds": get_settings().llm_timeout_seconds,
             "live_external_services": True,
         },
         "results": eval_summary,

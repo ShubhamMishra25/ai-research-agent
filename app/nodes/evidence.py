@@ -5,6 +5,8 @@ from urllib.parse import urlparse
 from app.schemas import FilteredEvidence
 from app.state import ResearchState
 from app.utils.logging_config import setup_logger
+from app.utils.metrics import track_node
+from app.utils.urls import canonicalize_url
 
 logger = setup_logger("node.evidence")
 
@@ -21,6 +23,7 @@ def _terms(text: str) -> set[str]:
     }
 
 
+@track_node("evidence")
 def process_evidence_node(state: ResearchState) -> dict:
     raw_results = state.get("raw_search_results", [])
     fetched_pages = {p.url: p for p in state.get("fetched_pages", []) if p.char_count > 50}
@@ -31,8 +34,16 @@ def process_evidence_node(state: ResearchState) -> dict:
     planned_terms = _terms(" ".join(plan.subquestions)) if plan else set()
     target_terms = question_terms | planned_terms
     source_index = 1
+    seen_urls: set[str] = set()
+    seen_content: set[str] = set()
+    duplicate_count = 0
 
     for res in raw_results:
+        url_key = canonicalize_url(res.url)
+        if url_key in seen_urls:
+            duplicate_count += 1
+            continue
+
         page = fetched_pages.get(res.url)
         if page:
             text_snippet = page.extracted_text[:1200]
@@ -44,11 +55,28 @@ def process_evidence_node(state: ResearchState) -> dict:
         if not text_snippet or len(text_snippet.strip()) < 15:
             continue
 
+        normalized_snippet = " ".join(text_snippet.split())
+        content_key = normalized_snippet.casefold()[:300]
+        if len(content_key) >= 20 and content_key in seen_content:
+            duplicate_count += 1
+            continue
+
         evidence_terms = _terms(f"{res.title} {res.snippet} {text_snippet}")
         overlap = len(target_terms & evidence_terms) / max(len(target_terms), 1)
-        relevance = min(1.0, overlap)
+
+        # Blend lexical relevance with the search engine's own ranking signal
+        # when available. Snippets with no score still work (e.g. direct URLs).
+        relevance = overlap
+        if res.score and res.score > 0:
+            relevance = 0.8 * overlap + 0.2 * min(res.score, 1.0)
+        relevance = min(1.0, relevance)
         if is_full:
             relevance = min(1.0, relevance + 0.15)
+
+        seen_urls.add(url_key)
+        if len(content_key) >= 20:
+            seen_content.add(content_key)
+
         evidence_item = FilteredEvidence(
             source_id=f"S{source_index}",
             url=res.url,
@@ -104,11 +132,28 @@ def process_evidence_node(state: ResearchState) -> dict:
     else:
         reason = f"Sufficient evidence gathered ({len(filtered)} validated sources)."
 
-    logger.info(f"Evidence status: {reason}")
+    logger.info(
+        "Evidence status: %s (raw=%d, kept=%d, duplicates=%d, domains=%d, quality=%d)",
+        reason,
+        len(raw_results),
+        len(filtered),
+        duplicate_count,
+        len(domains),
+        len(quality_sources),
+        extra={"execution_id": state.get("execution_id")},
+    )
 
     return {
         "evidence": filtered,
         "evidence_gaps": evidence_gaps,
         "is_sufficient": is_sufficient,
-        "sufficiency_reason": reason
+        "sufficiency_reason": reason,
+        "_metrics": {
+            "raw_results": len(raw_results),
+            "evidence_kept": len(filtered),
+            "duplicates_filtered": duplicate_count,
+            "domains": len(domains),
+            "quality_sources": len(quality_sources),
+            "evidence_gaps": len(evidence_gaps),
+        },
     }

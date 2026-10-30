@@ -5,7 +5,9 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from app.config import get_settings
 from app.schemas import FollowUpSearchPlan, ResearchPlan
 from app.state import ResearchState
+from app.utils.llm import invoke_structured
 from app.utils.logging_config import setup_logger
+from app.utils.metrics import track_node
 
 logger = setup_logger("node.planner")
 
@@ -23,6 +25,7 @@ the missing aspect in each query. Do not repeat any query already used.
 """
 
 
+@track_node("planner")
 def plan_research_node(state: ResearchState) -> dict:
     settings = get_settings()
     question = state["question"]
@@ -32,19 +35,27 @@ def plan_research_node(state: ResearchState) -> dict:
         llm = ChatGoogleGenerativeAI(
             model=settings.gemini_model,
             google_api_key=settings.gemini_api_key,
-            temperature=0.1
+            temperature=0.1,
+            timeout=settings.llm_timeout_seconds,
+            max_retries=0,
         )
-        structured_llm = llm.with_structured_output(ResearchPlan)
 
         messages = [
             SystemMessage(content=PLANNER_SYSTEM_PROMPT),
             HumanMessage(content=f"User Research Query: {question}")
         ]
-        plan: ResearchPlan = structured_llm.invoke(messages)
+        plan, usage = invoke_structured(
+            llm,
+            ResearchPlan,
+            messages,
+            settings=settings,
+            description="planner structured output",
+        )
 
         return {
             "plan": plan,
-            "warnings": []
+            "warnings": [],
+            "_metrics": {"usage": usage},
         }
     except Exception as exc:
         logger.warning(f"Planner LLM failed, using deterministic fallback plan: {str(exc)}")
@@ -70,6 +81,18 @@ def generate_follow_up_queries(state: ResearchState) -> list[str]:
     """
     gaps = [gap.strip() for gap in state.get("evidence_gaps", []) if gap.strip()]
     used = {query.casefold().strip() for query in state.get("used_queries", [])}
+
+    if not gaps:
+        # Insufficient evidence without a per-subquestion gap (e.g. too few
+        # independent domains). Fall back to the planned subquestions so the
+        # extra research cycle still does useful work.
+        plan = state.get("plan")
+        if plan and plan.subquestions:
+            gaps = [subquestion.strip() for subquestion in plan.subquestions if subquestion.strip()]
+        if not gaps:
+            gaps = [state.get("question", "").strip()]
+        gaps = [gap for gap in gaps if gap]
+
     if not gaps:
         return []
 
@@ -78,18 +101,25 @@ def generate_follow_up_queries(state: ResearchState) -> list[str]:
         llm = ChatGoogleGenerativeAI(
             model=settings.gemini_model,
             google_api_key=settings.gemini_api_key,
-            temperature=0.1
+            temperature=0.1,
+            timeout=settings.llm_timeout_seconds,
+            max_retries=0,
         )
-        structured_llm = llm.with_structured_output(FollowUpSearchPlan)
         prompt = (
             f"Research question: {state['question']}\n"
             f"Evidence gaps: {gaps}\n"
             f"Previously used queries: {list(state.get('used_queries', []))}"
         )
-        result: FollowUpSearchPlan = structured_llm.invoke([
-            SystemMessage(content=FOLLOW_UP_SYSTEM_PROMPT),
-            HumanMessage(content=prompt),
-        ])
+        result, _usage = invoke_structured(
+            llm,
+            FollowUpSearchPlan,
+            [
+                SystemMessage(content=FOLLOW_UP_SYSTEM_PROMPT),
+                HumanMessage(content=prompt),
+            ],
+            settings=settings,
+            description="follow-up query generation",
+        )
         candidates = result.queries
     except Exception as exc:
         logger.warning("Follow-up query generation failed: %s", exc)

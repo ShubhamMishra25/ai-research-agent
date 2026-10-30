@@ -23,6 +23,7 @@ def display_trace(result: dict) -> None:
     table.add_column("Tool", style="cyan")
     table.add_column("Target / Query", style="magenta")
     table.add_column("Status", style="green")
+    table.add_column("Attempts", justify="right")
     table.add_column("Latency (ms)", justify="right")
 
     for rec in records:
@@ -31,9 +32,33 @@ def display_trace(result: dict) -> None:
             rec.tool_name,
             rec.query_or_url[:60] + "..." if len(rec.query_or_url) > 60 else rec.query_or_url,
             f"[{status_color}]{rec.status}[/{status_color}]",
+            str(getattr(rec, "attempts", 1)),
             f"{rec.latency_ms:.1f}"
         )
     console.print(table)
+
+
+def display_metrics(result: dict) -> None:
+    metadata = result.get("metadata") or {}
+    metrics = metadata.get("metrics") or []
+    if not metrics:
+        return
+
+    table = Table(title="Agent Node Metrics")
+    table.add_column("Node", style="cyan")
+    table.add_column("Latency (ms)", justify="right")
+    table.add_column("Details", style="magenta")
+
+    for entry in metrics:
+        details = {
+            key: value
+            for key, value in entry.items()
+            if key not in ("node", "latency_ms") and value not in (None, {}, [], "")
+        }
+        table.add_row(entry.get("node", "?"), f"{entry.get('latency_ms', 0):.1f}", str(details))
+    console.print(table)
+    if metadata.get("total_latency_ms") is not None:
+        console.print(f"[dim]Total workflow latency: {metadata['total_latency_ms']:.1f} ms[/dim]")
 
 
 def main():
@@ -65,6 +90,7 @@ def main():
 
         if args.trace:
             display_trace(final_state)
+            display_metrics(final_state)
 
         if not final_resp:
             console.print("[bold red]Research terminated without generating a response.[/bold red]")
@@ -93,7 +119,11 @@ def main():
             for src in resp_dict["sources"]:
                 console.print(f"  [{src['source_id']}] [link={src['url']}]{src['title']}[/link] - {src['url']}")
 
-            console.print("\n[bold]Limitations / Assumptions:[/bold]")
+            console.print("\n[bold]Assumptions:[/bold]")
+            for assumption in resp_dict["assumptions"]:
+                console.print(f"  • {assumption}")
+
+            console.print("\n[bold]Limitations:[/bold]")
             for lim in resp_dict["limitations"]:
                 console.print(f"  • {lim}")
 

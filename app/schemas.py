@@ -15,6 +15,7 @@ class ToolCallRecord(BaseModel):
     query_or_url: str
     status: str  # "SUCCESS" or "FAILURE"
     latency_ms: float
+    attempts: int = 1
     error_message: Optional[str] = None
 
 

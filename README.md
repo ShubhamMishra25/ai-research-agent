@@ -38,6 +38,18 @@ results with a UTC timestamp to `evaluation/evaluation_results.json`:
 python evaluation/run_evaluation.py
 ```
 
+Each result records schema validity, grounding, confidence match, per-node
+latency, token usage, and the final answer fields. If the default model's
+free-tier quota is exhausted, override it:
+
+```bash
+GEMINI_MODEL=gemini-2.5-flash-lite python evaluation/run_evaluation.py
+```
+
+The latest executed run and its analysis are in
+[`evaluation/evaluation_results.json`](evaluation/evaluation_results.json) and
+[`evaluation/evaluation_report.md`](evaluation/evaluation_report.md).
+
 ## Adaptive research loop
 
 The agent performs a bounded, evidence-driven loop:

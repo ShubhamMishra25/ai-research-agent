@@ -1,0 +1,123 @@
+{
+  "executed_at": "2026-10-30T00:22:09.989447+00:00",
+  "configuration": {
+    "case_count": 5,
+    "gemini_model": "gemini-2.5-flash-lite",
+    "max_research_iterations": 2,
+    "max_retries": 2,
+    "llm_timeout_seconds": 45.0,
+    "live_external_services": true
+  },
+  "results": [
+    {
+      "id": "TC-01",
+      "category": "Normal Comparative Research",
+      "schema_valid": true,
+      "has_sources": true,
+      "confidence_matched": true,
+      "notes": "",
+      "actual_confidence": "High",
+      "grounding_intact": true,
+      "finding_citations_declared": true,
+      "fallback_behavior_matched": true,
+      "total_latency_ms": 16957.71,
+      "total_input_tokens": 3108,
+      "total_output_tokens": 2350,
+      "node_latencies_ms": {
+        "planner": 2025.64,
+        "researcher": 7082.6,
+        "evidence": 1.91,
+        "synthesizer": 7840.09
+      },
+      "duration_sec": 16.97
+    },
+    {
+      "id": "TC-02",
+      "category": "Entity Discovery",
+      "schema_valid": true,
+      "has_sources": true,
+      "confidence_matched": false,
+      "notes": "",
+      "actual_confidence": "Medium",
+      "grounding_intact": true,
+      "finding_citations_declared": true,
+      "fallback_behavior_matched": true,
+      "total_latency_ms": 19232.56,
+      "total_input_tokens": 3583,
+      "total_output_tokens": 2285,
+      "node_latencies_ms": {
+        "planner": 2023.47,
+        "researcher": 5810.41,
+        "evidence": 2.22,
+        "synthesizer": 11391.38
+      },
+      "duration_sec": 19.25
+    },
+    {
+      "id": "TC-03",
+      "category": "Ambiguous / Underspecified Question",
+      "schema_valid": true,
+      "has_sources": true,
+      "confidence_matched": false,
+      "notes": "",
+      "actual_confidence": "High",
+      "grounding_intact": true,
+      "finding_citations_declared": true,
+      "fallback_behavior_matched": true,
+      "total_latency_ms": 21807.73,
+      "total_input_tokens": 5553,
+      "total_output_tokens": 3052,
+      "node_latencies_ms": {
+        "planner": 1732.82,
+        "researcher": 6167.89,
+        "evidence": 2.13,
+        "synthesizer": 8881.64
+      },
+      "duration_sec": 21.82
+    },
+    {
+      "id": "TC-04",
+      "category": "Search Tool Failure / Outage",
+      "schema_valid": true,
+      "has_sources": true,
+      "confidence_matched": false,
+      "notes": "",
+      "actual_confidence": "High",
+      "grounding_intact": true,
+      "finding_citations_declared": true,
+      "fallback_behavior_matched": false,
+      "total_latency_ms": 41161.14,
+      "total_input_tokens": 5544,
+      "total_output_tokens": 2672,
+      "node_latencies_ms": {
+        "planner": 2338.55,
+        "researcher": 14208.45,
+        "evidence": 13.23,
+        "synthesizer": 14748.49
+      },
+      "duration_sec": 41.17
+    },
+    {
+      "id": "TC-05",
+      "category": "Zero Evidence / Obscure Entity",
+      "schema_valid": true,
+      "has_sources": true,
+      "confidence_matched": true,
+      "notes": "",
+      "actual_confidence": "Low",
+      "grounding_intact": true,
+      "finding_citations_declared": true,
+      "fallback_behavior_matched": false,
+      "total_latency_ms": 26297.49,
+      "total_input_tokens": 7447,
+      "total_output_tokens": 2942,
+      "node_latencies_ms": {
+        "planner": 1797.21,
+        "researcher": 8144.38,
+        "evidence": 11.22,
+        "synthesizer": 9023.48
+      },
+      "duration_sec": 26.32
+    }
+  ]
+}

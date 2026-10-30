@@ -1,4 +1,5 @@
 """LangGraph research agent assembly with conditional routing and bounded iteration."""
+import time
 from uuid import uuid4
 from langgraph.graph import StateGraph, START, END
 
@@ -9,6 +10,7 @@ from app.nodes.researcher import execute_research_node
 from app.nodes.evidence import process_evidence_node
 from app.nodes.synthesizer import synthesize_answer_node
 from app.utils.logging_config import setup_logger
+from app.utils.metrics import utc_now_iso
 
 logger = setup_logger("graph")
 
@@ -52,6 +54,7 @@ def create_research_graph() -> StateGraph:
 def run_research_agent(question: str, execution_id: str = None) -> ResearchState:
     app = create_research_graph()
     settings = get_settings()
+    started_at = time.perf_counter()
 
     initial_state: ResearchState = {
         "execution_id": execution_id or str(uuid4()),
@@ -70,8 +73,12 @@ def run_research_agent(question: str, execution_id: str = None) -> ResearchState
         "final_response": None,
         "errors": [],
         "warnings": [],
-        "metadata": {"started_at": str(uuid4())}
+        "metadata": {"started_at": utc_now_iso()}
     }
 
     result = app.invoke(initial_state)
+    metadata = result.get("metadata") or {}
+    metadata["completed_at"] = utc_now_iso()
+    metadata["total_latency_ms"] = round((time.perf_counter() - started_at) * 1000, 2)
+    result["metadata"] = metadata
     return result
