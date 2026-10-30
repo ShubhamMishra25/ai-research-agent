@@ -24,6 +24,7 @@ class SearchResultItem(BaseModel):
     url: str
     snippet: str
     score: Optional[float] = 0.0
+    published_date: Optional[str] = None
 
 
 class FetchedPage(BaseModel):
@@ -43,6 +44,9 @@ class FilteredEvidence(BaseModel):
     summary_or_excerpt: str
     is_full_page: bool = False
     relevance_score: float = 1.0
+    authority_score: float = 1.0
+    recency_score: float = 1.0
+    published_date: Optional[str] = None
 
 
 class ResearchPlan(BaseModel):

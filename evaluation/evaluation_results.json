@@ -1,12 +1,16 @@
 {
-  "executed_at": "2026-10-30T00:22:09.989447+00:00",
+  "executed_at": "2026-10-30T00:48:15.912878+00:00",
   "configuration": {
     "case_count": 5,
-    "gemini_model": "gemini-2.5-flash-lite",
+    "gemini_model": "gemini-3.1-flash-lite",
     "max_research_iterations": 2,
     "max_retries": 2,
     "llm_timeout_seconds": 45.0,
-    "live_external_services": true
+    "live_external_services": true,
+    "deterministic_fault_cases": [
+      "TC-04",
+      "TC-05"
+    ]
   },
   "results": [
     {
@@ -20,104 +24,244 @@
       "grounding_intact": true,
       "finding_citations_declared": true,
       "fallback_behavior_matched": true,
-      "total_latency_ms": 16957.71,
-      "total_input_tokens": 3108,
-      "total_output_tokens": 2350,
+      "expected_entity_count": 3,
+      "entity_match_count": 3,
+      "matched_entities": [
+        "Qdrant",
+        "Milvus",
+        "Chroma"
+      ],
+      "fact_level_matched": true,
+      "assumptions_present": true,
+      "assumptions_requirement_matched": true,
+      "total_latency_ms": 12595.85,
+      "total_input_tokens": 3711,
+      "total_output_tokens": 1167,
       "node_latencies_ms": {
-        "planner": 2025.64,
-        "researcher": 7082.6,
-        "evidence": 1.91,
-        "synthesizer": 7840.09
+        "planner": 2982.9,
+        "researcher": 6050.82,
+        "evidence": 3.1,
+        "synthesizer": 3552.86
       },
-      "duration_sec": 16.97
+      "short_answer": "For startups building RAG products, the top three open-source vector databases are Qdrant, Weaviate, and Milvus, each serving distinct operational needs: Qdrant for cost-efficient filtered search, Weaviate for integrated vectorization modules, and Milvus for large-scale infrastructure requirements.",
+      "key_findings_count": 4,
+      "sources_count": 3,
+      "limitations": [
+        "Benchmark performance can vary significantly based on specific hardware configurations and dataset sizes, which may not be fully captured in general comparisons.",
+        "The landscape of vector databases evolves rapidly; while the identified top three are consistent, new features or performance updates may shift the recommendation based on specific technical requirements."
+      ],
+      "assumptions": [
+        "The startup prefers self-hosted, open-source solutions over managed, proprietary services like Pinecone.",
+        "The startup is prioritizing RAG-specific features such as metadata filtering and ease of ingestion."
+      ],
+      "evidence_count": 10,
+      "iteration_count": 1,
+      "errors": [],
+      "warnings": [],
+      "overall_pass": true,
+      "mode": "live",
+      "duration_sec": 12.6
     },
     {
       "id": "TC-02",
       "category": "Entity Discovery",
       "schema_valid": true,
       "has_sources": true,
-      "confidence_matched": false,
+      "confidence_matched": true,
       "notes": "",
-      "actual_confidence": "Medium",
+      "actual_confidence": "High",
       "grounding_intact": true,
       "finding_citations_declared": true,
       "fallback_behavior_matched": true,
-      "total_latency_ms": 19232.56,
-      "total_input_tokens": 3583,
-      "total_output_tokens": 2285,
+      "expected_entity_count": 13,
+      "entity_match_count": 5,
+      "matched_entities": [
+        "Darwinbox",
+        "Keka",
+        "greytHR",
+        "ZingHR",
+        "peopleHum"
+      ],
+      "fact_level_matched": true,
+      "assumptions_present": true,
+      "assumptions_requirement_matched": true,
+      "total_latency_ms": 28275.2,
+      "total_input_tokens": 6788,
+      "total_output_tokens": 1436,
       "node_latencies_ms": {
-        "planner": 2023.47,
-        "researcher": 5810.41,
-        "evidence": 2.22,
-        "synthesizer": 11391.38
+        "planner": 1863.99,
+        "researcher": 4342.01,
+        "evidence": 4.78,
+        "synthesizer": 17249.92
       },
-      "duration_sec": 19.25
+      "short_answer": "The Indian HR tech landscape features several prominent B2B SaaS startups that provide cloud-based solutions for payroll, talent management, and employee experience, often emphasizing AI-native capabilities and local statutory compliance.",
+      "key_findings_count": 5,
+      "sources_count": 5,
+      "limitations": [
+        "The evidence includes some sources that are dated or promotional in nature.",
+        "While these companies are established, the term 'startup' is used broadly in the industry; some of these firms have achieved significant scale and funding rounds (e.g., Darwinbox).",
+        "No specific financial data for all five companies was available to confirm current 'startup' status versus 'growth-stage company'."
+      ],
+      "assumptions": [
+        "The companies listed are categorized as 'startups' or 'growing B2B SaaS' entities based on their inclusion in industry reports and comparative analyses of the Indian HR tech sector.",
+        "The term 'HR tech' is interpreted as encompassing HRMS, payroll, and talent management software."
+      ],
+      "evidence_count": 17,
+      "iteration_count": 2,
+      "errors": [],
+      "warnings": [],
+      "overall_pass": true,
+      "mode": "live",
+      "duration_sec": 28.29
     },
     {
       "id": "TC-03",
       "category": "Ambiguous / Underspecified Question",
       "schema_valid": true,
       "has_sources": true,
-      "confidence_matched": false,
+      "confidence_matched": true,
       "notes": "",
-      "actual_confidence": "High",
+      "actual_confidence": "Medium",
       "grounding_intact": true,
       "finding_citations_declared": true,
       "fallback_behavior_matched": true,
-      "total_latency_ms": 21807.73,
-      "total_input_tokens": 5553,
-      "total_output_tokens": 3052,
+      "expected_entity_count": 3,
+      "entity_match_count": 3,
+      "matched_entities": [
+        "LangGraph",
+        "AutoGen",
+        "CrewAI"
+      ],
+      "fact_level_matched": true,
+      "assumptions_present": true,
+      "assumptions_requirement_matched": true,
+      "total_latency_ms": 17218.09,
+      "total_input_tokens": 4289,
+      "total_output_tokens": 1221,
       "node_latencies_ms": {
-        "planner": 1732.82,
-        "researcher": 6167.89,
-        "evidence": 2.13,
-        "synthesizer": 8881.64
+        "planner": 2166.66,
+        "researcher": 5969.34,
+        "evidence": 2.83,
+        "synthesizer": 9075.12
       },
-      "duration_sec": 21.82
+      "short_answer": "The choice of framework depends on your specific architectural needs: LangGraph is preferred for complex, stateful production systems; CrewAI is recommended for role-based multi-agent collaboration; and Microsoft Agent Framework (MSAF) is the standard for enterprise Microsoft/Azure environments. AutoGen is largely considered legacy and is in maintenance mode.",
+      "key_findings_count": 5,
+      "sources_count": 3,
+      "limitations": [
+        "The landscape of AI agent frameworks is evolving rapidly; rankings and 'best' choices may shift within months.",
+        "Some sources (e.g., S12) provide vendor-published benchmarks that may not reflect real-world performance.",
+        "The response excludes niche or proprietary frameworks not widely covered in the provided evidence."
+      ],
+      "assumptions": [
+        "The user is looking for a framework to build production-ready AI agents in 2026.",
+        "The user has access to Python-based development environments, as most listed frameworks are Python-centric."
+      ],
+      "evidence_count": 12,
+      "iteration_count": 1,
+      "errors": [
+        "Fetch failed for 'https://pub.towardsai.net/top-ai-agent-frameworks-in-2026-a-production-ready-comparison-7ba5e39ad56d': HTTP 403"
+      ],
+      "warnings": [],
+      "overall_pass": true,
+      "mode": "live",
+      "duration_sec": 17.23
     },
     {
       "id": "TC-04",
       "category": "Search Tool Failure / Outage",
       "schema_valid": true,
-      "has_sources": true,
-      "confidence_matched": false,
-      "notes": "",
-      "actual_confidence": "High",
-      "grounding_intact": true,
-      "finding_citations_declared": true,
-      "fallback_behavior_matched": false,
-      "total_latency_ms": 41161.14,
-      "total_input_tokens": 5544,
-      "total_output_tokens": 2672,
-      "node_latencies_ms": {
-        "planner": 2338.55,
-        "researcher": 14208.45,
-        "evidence": 13.23,
-        "synthesizer": 14748.49
-      },
-      "duration_sec": 41.17
-    },
-    {
-      "id": "TC-05",
-      "category": "Zero Evidence / Obscure Entity",
-      "schema_valid": true,
-      "has_sources": true,
+      "has_sources": false,
       "confidence_matched": true,
       "notes": "",
       "actual_confidence": "Low",
       "grounding_intact": true,
       "finding_citations_declared": true,
-      "fallback_behavior_matched": false,
-      "total_latency_ms": 26297.49,
-      "total_input_tokens": 7447,
-      "total_output_tokens": 2942,
+      "fallback_behavior_matched": true,
+      "expected_entity_count": 0,
+      "entity_match_count": 0,
+      "matched_entities": [],
+      "fact_level_matched": true,
+      "assumptions_present": true,
+      "assumptions_requirement_matched": true,
+      "total_latency_ms": 4.78,
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
       "node_latencies_ms": {
-        "planner": 1797.21,
-        "researcher": 8144.38,
-        "evidence": 11.22,
-        "synthesizer": 9023.48
+        "planner": 0.22,
+        "researcher": 0.21,
+        "evidence": 0.08,
+        "synthesizer": 0.07
       },
-      "duration_sec": 26.32
+      "short_answer": "Unable to complete research with high confidence. Reason: No verified external evidence could be retrieved.",
+      "key_findings_count": 1,
+      "sources_count": 0,
+      "limitations": [
+        "Tool outputs were either missing, malformed, or unrecoverable.",
+        "Search failed for 'What are the latest breakthroughs in ambient agent computing?': Injected search outage",
+        "Search failed for 'What are the latest breakthroughs in ambient agent computing? comparison overview': Injected search outage",
+        "Search failed for 'What are the latest breakthroughs in ambient agent computing? authoritative evidence': Injected search outage"
+      ],
+      "assumptions": [
+        "Fallback response triggered without verified external facts."
+      ],
+      "evidence_count": 0,
+      "iteration_count": 2,
+      "errors": [
+        "Search failed for 'What are the latest breakthroughs in ambient agent computing?': Injected search outage",
+        "Search failed for 'What are the latest breakthroughs in ambient agent computing? comparison overview': Injected search outage",
+        "Search failed for 'What are the latest breakthroughs in ambient agent computing? authoritative evidence': Injected search outage"
+      ],
+      "warnings": [
+        "Planner fallback triggered: Injected planner outage"
+      ],
+      "overall_pass": true,
+      "mode": "deterministic",
+      "duration_sec": 0.02
+    },
+    {
+      "id": "TC-05",
+      "category": "Zero Evidence / Obscure Entity",
+      "schema_valid": true,
+      "has_sources": false,
+      "confidence_matched": true,
+      "notes": "",
+      "actual_confidence": "Low",
+      "grounding_intact": true,
+      "finding_citations_declared": true,
+      "fallback_behavior_matched": true,
+      "expected_entity_count": 0,
+      "entity_match_count": 0,
+      "matched_entities": [],
+      "fact_level_matched": true,
+      "assumptions_present": true,
+      "assumptions_requirement_matched": true,
+      "total_latency_ms": 3.53,
+      "total_input_tokens": 0,
+      "total_output_tokens": 0,
+      "node_latencies_ms": {
+        "planner": 0.1,
+        "researcher": 0.34,
+        "evidence": 0.08,
+        "synthesizer": 0.05
+      },
+      "short_answer": "Unable to complete research with high confidence. Reason: No verified external evidence could be retrieved.",
+      "key_findings_count": 1,
+      "sources_count": 0,
+      "limitations": [
+        "Tool outputs were either missing, malformed, or unrecoverable."
+      ],
+      "assumptions": [
+        "Fallback response triggered without verified external facts."
+      ],
+      "evidence_count": 0,
+      "iteration_count": 2,
+      "errors": [],
+      "warnings": [
+        "Planner fallback triggered: Injected planner outage"
+      ],
+      "overall_pass": true,
+      "mode": "deterministic",
+      "duration_sec": 0.01
     }
   ]
 }

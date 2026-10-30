@@ -25,7 +25,8 @@ def create_fallback_response(
     errors: List[str] = None
 ) -> ResearchResponse:
     err_list = errors or []
-    err_context = f" Reason: {reason}." if reason else ""
+    clean_reason = reason.rstrip(".") if reason else ""
+    err_context = f" Reason: {clean_reason}." if clean_reason else ""
     return ResearchResponse(
         question=question,
         short_answer=f"Unable to complete research with high confidence.{err_context}",

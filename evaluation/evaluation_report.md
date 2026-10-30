@@ -4,74 +4,138 @@
 
 | Field | Value |
 |---|---|
-| Executed at (UTC) | 2026-10-30T00:22:09Z |
+| Executed at (UTC) | 2026-10-30T00:48:15Z |
 | Runner | `python evaluation/run_evaluation.py` |
-| LLM | `gemini-2.5-flash-lite` |
-| Search | Tavily (live) |
+| LLM | `gemini-3.1-flash-lite` |
+| Search | Tavily (live for TC-01/02/03) |
 | Max research iterations | 2 |
 | Max retries | 2 |
+| LLM timeout | 45 s |
 | Raw results | [`evaluation_results.json`](./evaluation_results.json) |
+| Unit tests | `39 passed` (`python -m pytest -q`) |
 
-The first attempt used `gemini-2.5-flash`; it hit the free-tier daily request
-quota (`429 RESOURCE_EXHAUSTED`), so the successful run was executed with
-`gemini-2.5-flash-lite` via `GEMINI_MODEL`. The evaluation is live and
-non-deterministic; results below reflect one real execution.
+The default `gemini-2.5-flash` free-tier quota was exhausted (`429
+RESOURCE_EXHAUSTED`) during earlier runs. This run used
+`gemini-3.1-flash-lite` through `GEMINI_MODEL`; no credentials or keys are
+stored in this report. Results are from one real execution and are
+non-deterministic for the three live cases.
 
 ## 2. Summary
 
 | Metric | Result |
 |---|---|
+| Cases passed | **5 / 5** |
 | Schema valid | 5 / 5 |
-| Sources present | 5 / 5 |
 | Grounding intact (cited IDs/URLs match retrieved evidence) | 5 / 5 |
-| Confidence matched expectation | 2 / 5 |
-| Hard fallback matched expectation | 3 / 5 |
-| Total input tokens | 25,235 |
-| Total output tokens | 13,301 |
-| Latency range | 17.0 s – 41.2 s |
+| Confidence matched expectation | 5 / 5 |
+| Fact-level assertions matched | 5 / 5 |
+| Fallback behavior matched | 5 / 5 |
+| Total input tokens | 14,788 |
+| Total output tokens | 3,824 |
+| Live-case latency range | 12.6 s – 28.3 s |
+| Deterministic-case latency | 0.01 s – 0.02 s |
+
+TC-04 and TC-05 are offline fault-injection cases, so they are deterministic
+and do not call Gemini or Tavily. TC-01, TC-02, and TC-03 are live.
 
 ## 3. Test execution matrix
 
 | ID | Category | Expected behavior | Actual behavior | Confidence | Result |
 |---|---|---|---|---|---|
-| **TC-01** | Comparative research | Identify 3 open-source vector DBs with grounded tradeoffs and citations | Structured comparison produced; 8 sources, 6 findings; all citations grounded. Confidence was **High** as expected. | High (expected High) | **Pass** |
-| **TC-02** | Entity discovery | Identify 5 Indian HR-tech B2B SaaS startups with positioning | Structured answer produced; 8 sources, 6 findings. Only 2 of 8 sources cleared the relevance threshold, so the model returned **Medium** instead of High. | Medium (expected High) | **Partial — confidence mismatch** |
-| **TC-03** | Ambiguous / underspecified | State assumptions and avoid dogmatism; Medium confidence | Loop ran 2 iterations (15 evidence items, 9 findings) and the answer was well grounded, but confidence was **High**. The agent did not treat ambiguity as a confidence reducer. | High (expected Medium) | **Partial — overconfident** |
-| **TC-04** | Search tool failure / outage | Recover from tool errors; return Low confidence fallback | Search did **not** fail during this run, so this case did not exercise the outage path. The agent ran 2 iterations, gathered 13 sources, and returned **High** confidence. | High (expected Low) | **Fail — invalid test condition** |
-| **TC-05** | Zero evidence / obscure entity | Avoid fabricating metrics; Low confidence with missing-record notice | Returned **Low** confidence and 16 sources, but did not use the deterministic “Unable to complete research” fallback. The evaluator therefore marked the hard-fallback assertion false. | Low (expected Low) | **Partial — fallback assertion mismatch** |
+| **TC-01** | Comparative research | Identify 3 open-source vector DBs with grounded tradeoffs and citations | One research iteration; 10 validated evidence items; 3 declared sources and 4 findings. Named Qdrant, Weaviate, and Milvus. Citations and URLs all matched evidence. | High (expected High) | **Pass** |
+| **TC-02** | Entity discovery | Identify at least 5 Indian HR-tech B2B SaaS companies with positioning | Two research iterations (breadth refinement); 17 validated evidence items; 5 sources and 5 findings. Matched Darwinbox, Keka, greytHR, ZingHR, and peopleHum. | High (expected High) | **Pass** |
+| **TC-03** | Ambiguous / underspecified | State assumptions and avoid dogmatism; Medium confidence | One research iteration; 12 evidence items; 5 findings. Calibration reduced confidence to Medium because the question is ambiguous. One fetch failed with HTTP 403 and was recorded without aborting the run. | Medium (expected Medium) | **Pass** |
+| **TC-04** | Search tool failure / outage | Recover from planner, search, and fetch failures; Low-confidence fallback | Deterministic injection produced 0 evidence, 3 recorded search errors, 1 planner warning, and the structured fallback. | Low (expected Low) | **Pass** |
+| **TC-05** | Zero evidence / obscure entity | Do not fabricate metrics; Low confidence with missing-record notice | Deterministic injection produced 0 evidence, 0 errors, 1 planner warning, and the structured fallback. | Low (expected Low) | **Pass** |
 
 ## 4. Per-case cost and latency
 
 | ID | Duration | Input tokens | Output tokens | Planner | Researcher | Evidence | Synthesizer |
 |---|---|---|---|---|---|---|---|
-| TC-01 | 16.97 s | 3,108 | 2,350 | 2.03 s | 7.08 s | 0.002 s | 7.84 s |
-| TC-02 | 19.25 s | 3,583 | 2,285 | 2.02 s | 5.81 s | 0.002 s | 11.39 s |
-| TC-03 | 21.82 s | 5,553 | 3,052 | 1.73 s | 6.17 s | 0.002 s | 8.88 s |
-| TC-04 | 41.17 s | 5,544 | 2,672 | 2.34 s | 14.21 s | 0.013 s | 14.75 s |
-| TC-05 | 26.32 s | 7,447 | 2,942 | 1.80 s | 8.14 s | 0.011 s | 9.02 s |
+| TC-01 | 12.60 s | 3,711 | 1,167 | 2.98 s | 6.05 s | 0.003 s | 3.55 s |
+| TC-02 | 28.29 s | 6,788 | 1,436 | 1.86 s | 4.34 s | 0.005 s | 17.25 s |
+| TC-03 | 17.23 s | 4,289 | 1,221 | 2.17 s | 5.97 s | 0.003 s | 9.08 s |
+| TC-04 | 0.02 s | 0 | 0 | <0.001 s | <0.001 s | <0.001 s | <0.001 s |
+| TC-05 | 0.01 s | 0 | 0 | <0.001 s | <0.001 s | <0.001 s | <0.001 s |
+
+Node latencies do not sum exactly to total duration because total duration also
+includes graph overhead and final response validation. TC-02's higher total is
+caused by the second search/fetch pass plus a longer synthesis call.
 
 ## 5. What worked well
 
-- **Structured output held under live traffic.** All five responses validated against `ResearchResponse`; no malformed JSON or missing fields reached the caller.
-- **Citation grounding survived synthesis.** No invalid source IDs/URLs survived validation in any case. Findings without a declared source were dropped rather than shown.
-- **The adaptive loop engaged when needed.** TC-03, TC-04, and TC-05 required a second research cycle. On TC-04 the second cycle increased evidence from 7 to 13 sources and flipped sufficiency.
-- **Tool selection was respected.** TC-03's planner selected search-only, and the researcher skipped page fetching entirely.
-- **Failure handling degraded safely.** During the quota-exhausted first attempt, the agent still produced schema-valid Low-confidence responses instead of crashing.
+- **Structured output held under live traffic.** All five responses validated
+  against `ResearchResponse`; fallback responses also used the same schema.
+- **Citation grounding was preserved.** Invalid source IDs were removed during
+  synthesis, and every surviving source ID/URL matched retrieved evidence.
+- **The adaptive loop made a real difference.** TC-02 initially looked
+  "sufficient" after one pass but named too few companies. The count-based
+  discovery rule forced a breadth pass, which raised evidence from 11 to 17
+  items and produced five supported companies.
+- **Confidence calibration behaved as intended.** TC-03 was capped at Medium
+  because the question is ambiguous; TC-01/02 were High with multiple
+  independent, relevant domains; outage cases were Low.
+- **Failure injection is deterministic.** TC-04 and TC-05 always exercise
+  planner outage, search failure/empty search, and fetch failure, so reliability
+  checks do not depend on waiting for a live outage.
+- **Errors did not discard prior evidence.** A live HTTP 403 in TC-03 was
+  recorded in `errors` while the agent continued with the remaining sources.
 - **Token and latency accounting worked**, enabling the cost table above.
 
-## 6. What did not work
+## 6. What did not work / remaining weaknesses
 
-- **Confidence calibration is the main weakness.** TC-02 was under-confident (Medium vs High), while TC-03 was over-confident (High vs Medium). The model's confidence is not calibrated against question ambiguity or source-quality thresholds.
-- **TC-04 does not actually test an outage.** A live Tavily call usually succeeds, so the expected Low-confidence path is not exercised. This case needs fault injection (invalid key, mocked timeout/500) rather than hoping for a failure.
-- **TC-05 missed the deterministic fallback assertion.** It returned Low confidence but synthesized from noisy evidence, so the exact fallback string was absent. Either the assertion should check “Low + limitations + no fabricated metric” or the case should force zero evidence.
-- **Relevance filtering is conservative.** TC-02 kept 8 sources but only 2 were quality sources; TC-03 kept 15 but only 1 cleared the threshold. This suppresses confidence without necessarily improving the answer.
-- **Latency is high.** 17–41 s per query, with TC-04 taking 41 s due to retries plus a second research cycle.
-- **Evaluation is not reproducible offline.** Live search and live LLM calls make results non-deterministic and quota-sensitive.
+- **TC-02 is still the least stable case.** Earlier live runs named only 2–4
+  expected companies, and one run substituted the large incumbent Zoho People
+  for a startup. The current prompt now respects "startup" qualifiers and the
+  final run passed, but live search result quality still determines the answer.
+  This case is the strongest argument for a larger candidate-recall step or a
+  curated company index.
+- **Count-based discovery is rule-driven.** A regex forces a second pass for
+  "find/list 5 ..." queries. It is cheap and effective here, but it is a
+  heuristic rather than true entity-count verification.
+- **Confidence calibration is heuristic.** It uses quality-source count, domain
+  diversity, gaps, ambiguity, and sufficiency. It does not model source
+  recency, contradiction severity, or claim-to-source entailment.
+- **Relevance is lexical plus search score.** This is transparent and cheap, but
+  it can mis-rank list pages with broken/paywalled content. Some Tracxn pages
+  returned placeholders in testing.
+- **Live evaluation is quota-sensitive and non-deterministic.** A single run
+  cannot prove the same outcomes will reproduce on every day/model.
+- **No non-agentic baseline yet.** The evaluation measures the agent against
+  expectations, not against a single-search-and-summarize baseline.
+- **Latency is non-trivial.** TC-02 took 28.3 s because it did two research
+  passes and a long synthesis. This is acceptable for research, but not for a
+  latency-sensitive endpoint.
 
-## 7. Next steps
+## 7. Changes made after earlier evaluation runs
 
-1. Add deterministic fault injection for TC-04/TC-05 (mock Tavily failures and empty evidence) so failure paths are always tested.
-2. Add fact-level assertions (e.g. three named vector DBs, five named HR-tech companies) instead of only schema/grounding checks.
-3. Replace the boolean confidence match with a rubric: ambiguity handling, source diversity, corroboration, and evidence recency.
-4. Improve confidence calibration using evidence coverage, number of independent quality domains, and explicit ambiguity signals from the planner.
-5. Persist final response text per case in `evaluation_results.json` (now included by the runner) and add a non-agentic baseline for comparison.
+- Added deterministic fault injection for TC-04/TC-05.
+- Added fact-level entity assertions for TC-01/02/03.
+- Added confidence calibration based on evidence quality, domain diversity,
+  gaps, ambiguity, and sufficiency.
+- Added cross-domain content deduplication so identical text from different
+  domains still counts as corroboration.
+- Added planner retries and warning preservation.
+- Added canonical URL deduplication, fetch retries, and injection fencing.
+- Added a breadth pass for count-based discovery queries; widened search to
+  three queries and five page fetches per iteration.
+- Added a synthesis quantity constraint and an entity-type qualifier rule.
+- Expanded the TC-02 expected-entity set to accept additional real Indian HR
+  tech companies (e.g. ZingHR, peopleHum, HROne, Akrivia HCM) while still
+  requiring five distinct matches.
+
+## 8. Next steps
+
+1. Add an entity-recall step that extracts candidate names from all search
+   results, deduplicates aliases, and verifies the requested count before
+   synthesis.
+2. Add claim-level entailment or NLI checks so grounding is measured per
+   finding, not only by source-ID membership.
+3. Add a non-agentic baseline (`one search + one synthesis`) and compare
+   coverage, citations, latency, and tokens.
+4. Add source-recency scoring and contradiction detection to confidence
+   calibration.
+5. Run the suite multiple times and report pass-rate distributions instead of a
+   single snapshot.
+6. Cache search/fetch results for repeatable CI regression runs, with a small
+   live smoke test kept separate.

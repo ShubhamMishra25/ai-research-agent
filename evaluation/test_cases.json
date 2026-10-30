@@ -4,34 +4,76 @@
     "category": "Normal Comparative Research",
     "query": "Compare the top 3 open-source vector databases for a startup building RAG products.",
     "expected_behavior": "Identifies 3 leading DBs (e.g. Qdrant, Milvus, Chroma or Weaviate), provides grounded performance/developer ergonomics tradeoffs, and cites sources.",
-    "expected_confidence": "High"
+    "expected_confidence": "High",
+    "expected_entities": [
+      ["Qdrant"],
+      ["Milvus"],
+      ["Chroma", "Weaviate"]
+    ],
+    "min_entities": 3
   },
   {
     "id": "TC-02",
     "category": "Entity Discovery",
     "query": "Find 5 Indian B2B SaaS startups in HR tech and summarize their positioning.",
-    "expected_behavior": "Discovers 5 specific companies (e.g. Darwinbox, Keka, Greytip/greytHR, Zimyo, Leena AI) with distinct product positioning and citations.",
-    "expected_confidence": "High"
+    "expected_behavior": "Discovers at least 5 specific Indian HR tech companies (e.g. Darwinbox, Keka, Greytip/greytHR, Zimyo, Leena AI, ZingHR, peopleHum) with distinct product positioning and citations.",
+    "expected_confidence": "High",
+    "expected_entities": [
+      ["Darwinbox"],
+      ["Keka"],
+      ["greytHR", "Greytip"],
+      ["Zimyo"],
+      ["Leena AI", "Leena"],
+      ["ZingHR"],
+      ["peopleHum"],
+      ["PeopleStrong"],
+      ["HROne"],
+      ["factoHR"],
+      ["Kredily"],
+      ["Pocket HRMS"],
+      ["Akrivia HCM", "Akrivia"]
+    ],
+    "min_entities": 5
   },
   {
     "id": "TC-03",
     "category": "Ambiguous / Underspecified Question",
     "query": "Which agent framework should I use?",
     "expected_behavior": "Avoids dogmatic declaration; explicitly states assumptions regarding tech stack (Python vs JS), latency, complexity, and lists key contenders (LangGraph, AutoGen, CrewAI).",
-    "expected_confidence": "Medium"
+    "expected_confidence": "Medium",
+    "expected_entities": [
+      ["LangGraph"],
+      ["AutoGen"],
+      ["CrewAI"]
+    ],
+    "min_entities": 2,
+    "require_assumptions": true
   },
   {
     "id": "TC-04",
     "category": "Search Tool Failure / Outage",
     "query": "What are the latest breakthroughs in ambient agent computing?",
-    "expected_behavior": "Recovers gracefully if search tool yields errors; returns structured fallback output with Low confidence, explicit limitation logs, and actionable next steps.",
-    "expected_confidence": "Low"
+    "expected_behavior": "Recovers gracefully when search and fetch tools fail; returns structured fallback output with Low confidence, explicit limitation logs, and actionable next steps.",
+    "expected_confidence": "Low",
+    "expected_entities": [],
+    "min_entities": 0,
+    "inject": {
+      "offline_planner": true,
+      "search_failure": true,
+      "fetch_failure": true
+    }
   },
   {
     "id": "TC-05",
     "category": "Zero Evidence / Obscure Entity",
     "query": "What is the market capitalization of Zyxvubq Technologies in 2024?",
     "expected_behavior": "Recognizes absence of verified sources; does not hallucinate financial metrics; marks confidence as Low with explicit notice of missing records.",
-    "expected_confidence": "Low"
+    "expected_confidence": "Low",
+    "expected_entities": [],
+    "min_entities": 0,
+    "inject": {
+      "offline_planner": true,
+      "empty_search": true
+    }
   }
 ]

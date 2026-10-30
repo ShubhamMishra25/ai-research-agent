@@ -74,6 +74,11 @@ class WebSearchTool:
                         url=url,
                         snippet=str(content).strip(),
                         score=score,
+                        published_date=(
+                            str(item["published_date"]).strip()
+                            if item.get("published_date")
+                            else None
+                        ),
                     )
                 )
 

@@ -242,6 +242,34 @@ def test_sufficient_evidence_stops_research():
     assert result["evidence_gaps"] == []
 
 
+def test_count_based_discovery_forces_breadth_pass():
+    from app.graph import should_continue_research
+
+    state = {
+        "question": "Find 5 Indian B2B SaaS startups in HR tech",
+        "is_sufficient": True,
+        "iteration": 1,
+        "max_iterations": 2,
+    }
+
+    assert should_continue_research(state) == "research"
+    state["iteration"] = 2
+    assert should_continue_research(state) == "synthesize"
+
+
+def test_non_discovery_query_stops_when_sufficient():
+    from app.graph import should_continue_research
+
+    state = {
+        "question": "Compare the top 3 vector databases",
+        "is_sufficient": True,
+        "iteration": 1,
+        "max_iterations": 2,
+    }
+
+    assert should_continue_research(state) == "synthesize"
+
+
 def test_follow_up_query_generation_failure_uses_gap_fallback():
     from app.nodes.planner import generate_follow_up_queries
 

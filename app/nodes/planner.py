@@ -16,12 +16,17 @@ Given a user question, generate a concise, highly targeted research plan.
 Decompose the query into 2-3 specific subquestions and generate 2-3 precise web search queries.
 Choose queries that will yield high-authority sources, benchmarks, official documentation, or industry overviews.
 Avoid generic or overly broad search queries.
+For latest, new, recent, or current questions, include recency-aware queries.
+For organization-specific questions, prefer that organization's official
+announcement and documentation domains.
 """
 
 FOLLOW_UP_SYSTEM_PROMPT = """You are a research refinement specialist.
 Generate 1-2 precise, non-overlapping web search queries that directly address
 the supplied unanswered subquestions. Prefer authoritative sources and include
 the missing aspect in each query. Do not repeat any query already used.
+For temporal gaps, include the relevant year or "latest official announcement"
+when appropriate.
 """
 
 
@@ -54,7 +59,7 @@ def plan_research_node(state: ResearchState) -> dict:
 
         return {
             "plan": plan,
-            "warnings": [],
+            "warnings": list(state.get("warnings", [])),
             "_metrics": {"usage": usage},
         }
     except Exception as exc:
@@ -69,7 +74,10 @@ def plan_research_node(state: ResearchState) -> dict:
         )
         return {
             "plan": fallback_plan,
-            "warnings": [f"Planner fallback triggered: {str(exc)}"]
+            "warnings": [
+                *state.get("warnings", []),
+                f"Planner fallback triggered: {str(exc)}",
+            ]
         }
 
 

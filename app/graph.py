@@ -1,4 +1,5 @@
 """LangGraph research agent assembly with conditional routing and bounded iteration."""
+import re
 import time
 from uuid import uuid4
 from langgraph.graph import StateGraph, START, END
@@ -15,14 +16,37 @@ from app.utils.metrics import utc_now_iso
 logger = setup_logger("graph")
 
 
+DISCOVERY_PATTERN = re.compile(
+    r"\b(?:find|list|identify|name|discover|recommend)\b[^?]{0,60}\b\d+\b",
+    re.IGNORECASE,
+)
+
+
+def _requests_candidate_discovery(question: str) -> bool:
+    """Count-based discovery ("find 5 startups") needs a breadth pass.
+
+    A single search can satisfy lexical coverage while naming fewer candidates
+    than requested, so force one refinement iteration before synthesis.
+    """
+    return bool(DISCOVERY_PATTERN.search(question or ""))
+
+
 def should_continue_research(state: ResearchState) -> str:
     is_sufficient = state.get("is_sufficient", False)
     iteration = state.get("iteration", 1)
     max_iterations = state.get("max_iterations", get_settings().max_research_iterations)
 
-    if is_sufficient or iteration >= max_iterations:
+    needs_discovery_pass = (
+        is_sufficient
+        and iteration == 1
+        and _requests_candidate_discovery(state.get("question", ""))
+    )
+    if (is_sufficient and not needs_discovery_pass) or iteration >= max_iterations:
         return "synthesize"
-    logger.info(f"Evidence insufficient. Routing for research iteration {iteration + 1}")
+    if needs_discovery_pass:
+        logger.info("Count-based discovery query. Forcing a breadth refinement pass")
+    else:
+        logger.info(f"Evidence insufficient. Routing for research iteration {iteration + 1}")
     return "research"
 
 

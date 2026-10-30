@@ -1,20 +1,116 @@
-"""Evaluation runner executing test cases and grading schema, grounding, and confidence."""
+"""Evaluation runner executing test cases and grading schema, grounding, facts, and confidence."""
+import contextlib
 import json
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 from rich.console import Console
 from rich.table import Table
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.schemas import ResearchResponse  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.graph import run_research_agent  # noqa: E402
+from app.schemas import FetchedPage, ToolCallRecord  # noqa: E402
+from app.schemas import ResearchResponse  # noqa: E402
 
 console = Console()
+
+
+def _failure_record(tool_name: str, target: str, message: str) -> ToolCallRecord:
+    return ToolCallRecord(
+        tool_name=tool_name,
+        query_or_url=target,
+        status="FAILURE",
+        latency_ms=0.0,
+        error_message=message,
+    )
+
+
+def _injected_search_failure(self, query: str, max_results: int = 4):
+    return [], _failure_record("web_search", query, "Injected search outage")
+
+
+def _injected_empty_search(self, query: str, max_results: int = 4):
+    return [], ToolCallRecord(
+        tool_name="web_search",
+        query_or_url=query,
+        status="SUCCESS",
+        latency_ms=0.0,
+    )
+
+
+def _injected_fetch_failure(self, url: str):
+    message = "Injected page-fetch outage"
+    return (
+        FetchedPage(
+            url=url,
+            title="Error Loading Page",
+            extracted_text="",
+            http_status=500,
+            char_count=0,
+            error=message,
+        ),
+        _failure_record("fetch_page", url, message),
+    )
+
+
+def run_case(tc: dict) -> tuple[dict, str]:
+    """Run one case, applying deterministic fault injection when configured."""
+    inject = tc.get("inject") or {}
+    mode = "deterministic" if inject else "live"
+
+    with contextlib.ExitStack() as stack:
+        if inject.get("offline_planner"):
+            stack.enter_context(
+                patch(
+                    "app.nodes.planner.ChatGoogleGenerativeAI",
+                    side_effect=RuntimeError("Injected planner outage"),
+                )
+            )
+        if inject.get("search_failure"):
+            stack.enter_context(
+                patch("app.tools.web_search.WebSearchTool.search", _injected_search_failure)
+            )
+        elif inject.get("empty_search"):
+            stack.enter_context(
+                patch("app.tools.web_search.WebSearchTool.search", _injected_empty_search)
+            )
+        if inject.get("fetch_failure"):
+            stack.enter_context(
+                patch("app.tools.fetch_page.PageFetchTool.fetch", _injected_fetch_failure)
+            )
+        return run_research_agent(tc["query"]), mode
+
+
+def _answer_text(resp: ResearchResponse) -> str:
+    parts = [resp.short_answer, *(finding.finding for finding in resp.key_findings)]
+    return " ".join(parts).casefold()
+
+
+def evaluate_facts(tc: dict, resp: ResearchResponse) -> dict:
+    groups = tc.get("expected_entities", [])
+    min_entities = tc.get("min_entities", len(groups))
+    answer = _answer_text(resp)
+
+    matched = []
+    for group in groups:
+        aliases = group if isinstance(group, list) else [group]
+        if any(str(alias).casefold() in answer for alias in aliases):
+            matched.append(str(aliases[0]))
+
+    assumptions_ok = bool(resp.assumptions) if tc.get("require_assumptions") else True
+    return {
+        "expected_entity_count": len(groups),
+        "entity_match_count": len(matched),
+        "matched_entities": matched,
+        "fact_level_matched": len(matched) >= min_entities,
+        "assumptions_present": bool(resp.assumptions),
+        "assumptions_requirement_matched": assumptions_ok,
+    }
 
 
 def evaluate_response(tc: dict, state: dict) -> dict:
@@ -26,7 +122,7 @@ def evaluate_response(tc: dict, state: dict) -> dict:
         "schema_valid": False,
         "has_sources": len(resp.sources) > 0 if resp else False,
         "confidence_matched": False,
-        "notes": ""
+        "notes": "",
     }
 
     if not resp:
@@ -67,6 +163,8 @@ def evaluate_response(tc: dict, state: dict) -> dict:
     else:
         results["fallback_behavior_matched"] = actual_conf.lower() != "low"
 
+    results.update(evaluate_facts(tc, resp))
+
     metadata = state.get("metadata") or {}
     node_metrics = metadata.get("metrics") or []
     total_input_tokens = sum(
@@ -86,6 +184,20 @@ def evaluate_response(tc: dict, state: dict) -> dict:
     results["sources_count"] = len(resp.sources)
     results["limitations"] = list(resp.limitations)
     results["assumptions"] = list(resp.assumptions)
+    results["evidence_count"] = len(state.get("evidence", []))
+    results["iteration_count"] = state.get("iteration", 0)
+    results["errors"] = list(state.get("errors", []))
+    results["warnings"] = list(state.get("warnings", []))
+    results["overall_pass"] = all(
+        [
+            results["schema_valid"],
+            results["grounding_intact"],
+            results["confidence_matched"],
+            results["fact_level_matched"],
+            results["fallback_behavior_matched"],
+            results["assumptions_requirement_matched"],
+        ]
+    )
     return results
 
 
@@ -101,8 +213,9 @@ def main():
         console.print(f"Executing [bold]{tc['id']}[/bold]: {tc['query']}")
         start = time.perf_counter()
         try:
-            state = run_research_agent(tc["query"])
+            state, mode = run_case(tc)
             eval_res = evaluate_response(tc, state)
+            eval_res["mode"] = mode
             eval_res["duration_sec"] = round(time.perf_counter() - start, 2)
             eval_summary.append(eval_res)
         except Exception as e:
@@ -114,6 +227,11 @@ def main():
                 "has_sources": False,
                 "confidence_matched": False,
                 "grounding_intact": False,
+                "fact_level_matched": False,
+                "fallback_behavior_matched": False,
+                "assumptions_requirement_matched": False,
+                "overall_pass": False,
+                "mode": "deterministic" if tc.get("inject") else "live",
                 "duration_sec": round(time.perf_counter() - start, 2),
                 "notes": str(e)
             })
@@ -121,9 +239,12 @@ def main():
     table = Table(title="Agent Benchmark Evaluation Results")
     table.add_column("ID", style="cyan")
     table.add_column("Category", style="magenta")
-    table.add_column("Schema Valid", style="green")
-    table.add_column("Sources Present")
-    table.add_column("Grounding Intact")
+    table.add_column("Schema", style="green")
+    table.add_column("Grounding")
+    table.add_column("Confidence")
+    table.add_column("Facts")
+    table.add_column("Fallback")
+    table.add_column("Overall", style="bold")
     table.add_column("Duration (s)", justify="right")
 
     for item in eval_summary:
@@ -131,9 +252,12 @@ def main():
             item["id"],
             item["category"],
             "PASS" if item["schema_valid"] else "FAIL",
-            "PASS" if item.get("has_sources") else "FAIL",
             "PASS" if item.get("grounding_intact") else "FAIL",
-            str(item.get("duration_sec", 0.0))
+            "PASS" if item.get("confidence_matched") else "FAIL",
+            "PASS" if item.get("fact_level_matched") else "FAIL",
+            "PASS" if item.get("fallback_behavior_matched") else "FAIL",
+            "PASS" if item.get("overall_pass") else "FAIL",
+            str(item.get("duration_sec", 0.0)),
         )
 
     results_path = Path(__file__).parent / "evaluation_results.json"
@@ -146,12 +270,18 @@ def main():
             "max_retries": get_settings().max_retries,
             "llm_timeout_seconds": get_settings().llm_timeout_seconds,
             "live_external_services": True,
+            "deterministic_fault_cases": [
+                case["id"] for case in cases if case.get("inject")
+            ],
         },
         "results": eval_summary,
     }
     results_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     console.print(f"\nMachine-readable results written to {results_path}")
     console.print(table)
+
+    passed = sum(1 for item in eval_summary if item.get("overall_pass"))
+    console.print(f"\n[bold]Overall: {passed}/{len(eval_summary)} cases passed[/bold]")
 
 
 if __name__ == "__main__":

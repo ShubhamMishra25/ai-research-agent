@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # Operational Parameters
     max_research_iterations: int = Field(default=2, alias="MAX_RESEARCH_ITERATIONS")
     max_search_results_per_query: int = Field(default=4, alias="MAX_SEARCH_RESULTS_PER_QUERY")
-    max_pages_to_fetch: int = Field(default=3, alias="MAX_PAGES_TO_FETCH")
+    max_pages_to_fetch: int = Field(default=5, alias="MAX_PAGES_TO_FETCH")
     request_timeout_seconds: float = Field(default=10.0, alias="REQUEST_TIMEOUT_SECONDS")
     llm_timeout_seconds: float = Field(default=45.0, alias="LLM_TIMEOUT_SECONDS")
     max_page_content_bytes: int = Field(default=500_000, alias="MAX_PAGE_CONTENT_BYTES")

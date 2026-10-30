@@ -12,6 +12,13 @@ from app.utils.urls import canonicalize_url, extract_direct_urls
 logger = setup_logger("node.researcher")
 
 KNOWN_TOOLS = {"web_search", "fetch_page"}
+OFFICIAL_DOMAIN_HINTS = {
+    "openai": ("openai.com", "platform.openai.com", "help.openai.com"),
+    "google": ("google.com", "deepmind.google", "ai.google"),
+    "microsoft": ("microsoft.com", "blogs.microsoft.com"),
+    "anthropic": ("anthropic.com",),
+    "meta": ("meta.com", "ai.meta.com"),
+}
 
 
 def _selected_tools(state: ResearchState) -> set[str]:
@@ -35,6 +42,16 @@ def _direct_url_results(question: str, plan) -> list[SearchResultItem]:
             seen.add(key)
             unique.append(SearchResultItem(title="Direct URL from question", url=url, snippet="", score=1.0))
     return unique
+
+
+def _authority_hint(url: str, question: str) -> int:
+    lowered_question = question.lower()
+    lowered_url = url.lower()
+    return int(any(
+        organization in lowered_question and domain in lowered_url
+        for organization, domains in OFFICIAL_DOMAIN_HINTS.items()
+        for domain in domains
+    ))
 
 
 @track_node("researcher")
@@ -64,7 +81,18 @@ def execute_research_node(state: ResearchState) -> dict:
     if state.get("iteration", 0) > 0:
         queries_to_run = generate_follow_up_queries(state)
     else:
-        queries_to_run = plan.proposed_searches if plan and plan.proposed_searches else [state["question"]]
+        queries_to_run = list(plan.proposed_searches) if plan and plan.proposed_searches else [state["question"]]
+        # Planned subquestions make useful searches too, especially for
+        # entity-discovery queries where one generic query misses candidates.
+        if plan:
+            existing = {query.casefold().strip() for query in queries_to_run}
+            for subquestion in plan.subquestions:
+                if len(queries_to_run) >= 3:
+                    break
+                key = subquestion.casefold().strip()
+                if key and key not in existing:
+                    existing.add(key)
+                    queries_to_run.append(subquestion)
 
     if not queries_to_run:
         # Never burn an iteration without doing work.
@@ -77,7 +105,7 @@ def execute_research_node(state: ResearchState) -> dict:
     # Follow-up iterations escalate to search because they are gap-driven.
     use_search = "web_search" in selected_tools or state.get("iteration", 0) > 0
     if use_search:
-        for q in queries_to_run[:2]:
+        for q in queries_to_run[:3]:
             normalized_query = q.strip()
             if not normalized_query or normalized_query.casefold() in used_query_keys:
                 continue
@@ -111,7 +139,13 @@ def execute_research_node(state: ResearchState) -> dict:
             for result in all_raw_results
             if canonicalize_url(result.url) not in fetched_keys
         ]
-        candidate_urls.sort(key=lambda url: score_by_url.get(url, 0.0), reverse=True)
+        candidate_urls.sort(
+            key=lambda url: (
+                _authority_hint(url, state.get("question", "")),
+                score_by_url.get(url, 0.0),
+            ),
+            reverse=True,
+        )
         urls_to_fetch = candidate_urls[: settings.max_pages_to_fetch]
 
         for url in urls_to_fetch:
